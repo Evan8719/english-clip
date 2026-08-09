@@ -1,0 +1,1261 @@
+[
+  {
+    "headword": "the",
+    "phonetic": "/ðə/",
+    "definitions": ["used to refer to a specific thing already known"],
+    "examples": ["The book is on the table."],
+    "cefrBand": "A1",
+    "pos": "article"
+  },
+  {
+    "headword": "be",
+    "phonetic": "/biː/",
+    "definitions": ["to exist; used to describe identity or state"],
+    "examples": ["She is a teacher."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "have",
+    "phonetic": "/hæv/",
+    "definitions": ["to own or possess; used as an auxiliary verb"],
+    "examples": ["I have two brothers."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "do",
+    "phonetic": "/duː/",
+    "definitions": ["to perform an action; used in questions and negatives"],
+    "examples": ["What do you do?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "say",
+    "phonetic": "/seɪ/",
+    "definitions": ["to speak words; to express something in words"],
+    "examples": ["What did she say?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "get",
+    "phonetic": "/ɡet/",
+    "definitions": ["to obtain, receive, or become"],
+    "examples": ["I got a new job."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "make",
+    "phonetic": "/meɪk/",
+    "definitions": ["to create or produce; to cause something to happen"],
+    "examples": ["She made a cake."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "go",
+    "phonetic": "/ɡəʊ/",
+    "definitions": ["to move or travel to a place"],
+    "examples": ["Let's go home."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "know",
+    "phonetic": "/nəʊ/",
+    "definitions": ["to have information or understanding about something"],
+    "examples": ["I know the answer."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "take",
+    "phonetic": "/teɪk/",
+    "definitions": ["to move something with you; to need time or effort"],
+    "examples": ["It takes ten minutes."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "see",
+    "phonetic": "/siː/",
+    "definitions": ["to notice with your eyes; to understand"],
+    "examples": ["I see what you mean."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "come",
+    "phonetic": "/kʌm/",
+    "definitions": ["to move toward the speaker or a place"],
+    "examples": ["Can you come tomorrow?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "think",
+    "phonetic": "/θɪŋk/",
+    "definitions": ["to use your mind; to have an opinion"],
+    "examples": ["I think it's a good idea."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "look",
+    "phonetic": "/lʊk/",
+    "definitions": ["to turn your eyes toward something; to seem"],
+    "examples": ["Look at this photo."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "want",
+    "phonetic": "/wɒnt/",
+    "definitions": ["to wish for or desire something"],
+    "examples": ["I want some water."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "give",
+    "phonetic": "/ɡɪv/",
+    "definitions": ["to hand something to someone"],
+    "examples": ["Please give me a minute."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "use",
+    "phonetic": "/juːz/",
+    "definitions": ["to do something with an object for a purpose"],
+    "examples": ["Can I use your phone?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "find",
+    "phonetic": "/faɪnd/",
+    "definitions": ["to discover or locate something"],
+    "examples": ["I can't find my keys."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "tell",
+    "phonetic": "/tel/",
+    "definitions": ["to communicate information to someone"],
+    "examples": ["Tell me the truth."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "ask",
+    "phonetic": "/ɑːsk/",
+    "definitions": ["to put a question to someone; to request"],
+    "examples": ["May I ask a question?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "work",
+    "phonetic": "/wɜːk/",
+    "definitions": ["to do a job; a place of employment"],
+    "examples": ["I work from home."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "seem",
+    "phonetic": "/siːm/",
+    "definitions": ["to appear to be true or real"],
+    "examples": ["It seems difficult."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "feel",
+    "phonetic": "/fiːl/",
+    "definitions": ["to experience an emotion or physical sensation"],
+    "examples": ["I feel tired."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "try",
+    "phonetic": "/traɪ/",
+    "definitions": ["to make an attempt or effort"],
+    "examples": ["Try again."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "leave",
+    "phonetic": "/liːv/",
+    "definitions": ["to go away from a place; to let something remain"],
+    "examples": ["What time do you leave?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "call",
+    "phonetic": "/kɔːl/",
+    "definitions": ["to telephone; to give a name"],
+    "examples": ["I'll call you later."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "keep",
+    "phonetic": "/kiːp/",
+    "definitions": ["to continue to have; to continue doing"],
+    "examples": ["Keep the change."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "let",
+    "phonetic": "/let/",
+    "definitions": ["to allow someone to do something"],
+    "examples": ["Let me help."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "begin",
+    "phonetic": "/bɪˈɡɪn/",
+    "definitions": ["to start doing something"],
+    "examples": ["Let's begin."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "help",
+    "phonetic": "/help/",
+    "definitions": ["to make it easier for someone to do something"],
+    "examples": ["Can you help me?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "show",
+    "phonetic": "/ʃəʊ/",
+    "definitions": ["to make something visible; to explain by example"],
+    "examples": ["Show me how."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "hear",
+    "phonetic": "/hɪə/",
+    "definitions": ["to perceive sound with your ears"],
+    "examples": ["Did you hear that?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "play",
+    "phonetic": "/pleɪ/",
+    "definitions": ["to take part in a game; to perform music"],
+    "examples": ["The kids are playing outside."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "run",
+    "phonetic": "/rʌn/",
+    "definitions": ["to move quickly on foot; to operate"],
+    "examples": ["He runs every morning."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "move",
+    "phonetic": "/muːv/",
+    "definitions": ["to change position; to go to a new home"],
+    "examples": ["Don't move."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "live",
+    "phonetic": "/lɪv/",
+    "definitions": ["to have your home in a place; to be alive"],
+    "examples": ["I live in Shanghai."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "believe",
+    "phonetic": "/bɪˈliːv/",
+    "definitions": ["to accept that something is true"],
+    "examples": ["I believe you."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "bring",
+    "phonetic": "/brɪŋ/",
+    "definitions": ["to take something or someone with you to a place"],
+    "examples": ["Bring your laptop."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "happen",
+    "phonetic": "/ˈhæpən/",
+    "definitions": ["to take place; to occur"],
+    "examples": ["What happened?"],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "write",
+    "phonetic": "/raɪt/",
+    "definitions": ["to form letters or words; to create text"],
+    "examples": ["Write it down."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "provide",
+    "phonetic": "/prəˈvaɪd/",
+    "definitions": ["to give something that is needed"],
+    "examples": ["The hotel provides breakfast."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "sit",
+    "phonetic": "/sɪt/",
+    "definitions": ["to rest on a chair with your weight on your bottom"],
+    "examples": ["Please sit down."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "stand",
+    "phonetic": "/stænd/",
+    "definitions": ["to be on your feet; to tolerate"],
+    "examples": ["Stand over there."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "lose",
+    "phonetic": "/luːz/",
+    "definitions": ["to no longer have something; to fail to win"],
+    "examples": ["Don't lose your ticket."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "pay",
+    "phonetic": "/peɪ/",
+    "definitions": ["to give money for something"],
+    "examples": ["I'll pay for dinner."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "meet",
+    "phonetic": "/miːt/",
+    "definitions": ["to see and speak to someone for the first time or by arrangement"],
+    "examples": ["Nice to meet you."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "include",
+    "phonetic": "/ɪnˈkluːd/",
+    "definitions": ["to contain as part of a whole"],
+    "examples": ["The price includes tax."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "continue",
+    "phonetic": "/kənˈtɪnjuː/",
+    "definitions": ["to keep happening or doing something"],
+    "examples": ["Please continue."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "set",
+    "phonetic": "/set/",
+    "definitions": ["to put something in a place; to establish"],
+    "examples": ["Set the table."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "learn",
+    "phonetic": "/lɜːn/",
+    "definitions": ["to gain knowledge or skill"],
+    "examples": ["I'm learning English."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "change",
+    "phonetic": "/tʃeɪndʒ/",
+    "definitions": ["to make or become different"],
+    "examples": ["Things change quickly."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "lead",
+    "phonetic": "/liːd/",
+    "definitions": ["to guide; to be in charge"],
+    "examples": ["She leads the team."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "understand",
+    "phonetic": "/ˌʌndəˈstænd/",
+    "definitions": ["to know the meaning of something"],
+    "examples": ["Do you understand?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "watch",
+    "phonetic": "/wɒtʃ/",
+    "definitions": ["to look at something for a period of time"],
+    "examples": ["We watched a documentary."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "follow",
+    "phonetic": "/ˈfɒləʊ/",
+    "definitions": ["to go after; to obey or pay attention to"],
+    "examples": ["Follow the instructions."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "stop",
+    "phonetic": "/stɒp/",
+    "definitions": ["to end an action or movement"],
+    "examples": ["Stop talking."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "create",
+    "phonetic": "/kriˈeɪt/",
+    "definitions": ["to make something new"],
+    "examples": ["They created a new app."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "speak",
+    "phonetic": "/spiːk/",
+    "definitions": ["to use your voice to say words"],
+    "examples": ["She speaks three languages."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "read",
+    "phonetic": "/riːd/",
+    "definitions": ["to look at and understand written words"],
+    "examples": ["I read every night."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "allow",
+    "phonetic": "/əˈlaʊ/",
+    "definitions": ["to let someone do something"],
+    "examples": ["Pets are not allowed."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "add",
+    "phonetic": "/æd/",
+    "definitions": ["to put something with something else"],
+    "examples": ["Add some salt."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "spend",
+    "phonetic": "/spend/",
+    "definitions": ["to use money or time"],
+    "examples": ["I spend too much on coffee."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "grow",
+    "phonetic": "/ɡrəʊ/",
+    "definitions": ["to increase in size or develop"],
+    "examples": ["Plants grow in spring."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "open",
+    "phonetic": "/ˈəʊpən/",
+    "definitions": ["to move something so there is a space; not closed"],
+    "examples": ["Open the window."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "walk",
+    "phonetic": "/wɔːk/",
+    "definitions": ["to move on foot"],
+    "examples": ["We walked to the station."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "win",
+    "phonetic": "/wɪn/",
+    "definitions": ["to be the most successful in a contest"],
+    "examples": ["Who won the game?"],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "offer",
+    "phonetic": "/ˈɒfə/",
+    "definitions": ["to present something for someone to accept"],
+    "examples": ["They offered me a job."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "remember",
+    "phonetic": "/rɪˈmembə/",
+    "definitions": ["to bring information back into your mind"],
+    "examples": ["I can't remember his name."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "consider",
+    "phonetic": "/kənˈsɪdə/",
+    "definitions": ["to think carefully about something"],
+    "examples": ["We're considering the options."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "appear",
+    "phonetic": "/əˈpɪə/",
+    "definitions": ["to become visible; to seem"],
+    "examples": ["He appeared suddenly."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "buy",
+    "phonetic": "/baɪ/",
+    "definitions": ["to get something by paying money"],
+    "examples": ["I need to buy milk."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "wait",
+    "phonetic": "/weɪt/",
+    "definitions": ["to stay until something happens"],
+    "examples": ["Please wait here."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "serve",
+    "phonetic": "/sɜːv/",
+    "definitions": ["to give food or help; to work for"],
+    "examples": ["Breakfast is served at 8."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "die",
+    "phonetic": "/daɪ/",
+    "definitions": ["to stop living"],
+    "examples": ["The plant died."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "send",
+    "phonetic": "/send/",
+    "definitions": ["to cause something to go somewhere"],
+    "examples": ["Send me the file."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "expect",
+    "phonetic": "/ɪkˈspekt/",
+    "definitions": ["to think that something will happen"],
+    "examples": ["I expect rain tomorrow."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "build",
+    "phonetic": "/bɪld/",
+    "definitions": ["to make a structure by putting parts together"],
+    "examples": ["They built a bridge."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "stay",
+    "phonetic": "/steɪ/",
+    "definitions": ["to remain in a place"],
+    "examples": ["Stay calm."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "fall",
+    "phonetic": "/fɔːl/",
+    "definitions": ["to drop down; to decrease"],
+    "examples": ["Leaves fall in autumn."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "cut",
+    "phonetic": "/kʌt/",
+    "definitions": ["to divide with a sharp tool; to reduce"],
+    "examples": ["Cut the paper in half."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "reach",
+    "phonetic": "/riːtʃ/",
+    "definitions": ["to arrive at; to stretch out to touch"],
+    "examples": ["We reached the station at noon."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "kill",
+    "phonetic": "/kɪl/",
+    "definitions": ["to cause death"],
+    "examples": ["Frost can kill plants."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "remain",
+    "phonetic": "/rɪˈmeɪn/",
+    "definitions": ["to continue to exist or stay"],
+    "examples": ["Please remain seated."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "suggest",
+    "phonetic": "/səˈdʒest/",
+    "definitions": ["to put forward an idea for consideration"],
+    "examples": ["I suggest we leave early."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "raise",
+    "phonetic": "/reɪz/",
+    "definitions": ["to lift; to increase; to bring up a child"],
+    "examples": ["Raise your hand."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "pass",
+    "phonetic": "/pɑːs/",
+    "definitions": ["to go past; to succeed in a test; to give"],
+    "examples": ["Did you pass the exam?"],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "sell",
+    "phonetic": "/sel/",
+    "definitions": ["to give something in exchange for money"],
+    "examples": ["They sell fresh fruit."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "require",
+    "phonetic": "/rɪˈkwaɪə/",
+    "definitions": ["to need something"],
+    "examples": ["This job requires experience."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "report",
+    "phonetic": "/rɪˈpɔːt/",
+    "definitions": ["to give information about something"],
+    "examples": ["Please report any problems."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "decide",
+    "phonetic": "/dɪˈsaɪd/",
+    "definitions": ["to choose after thinking"],
+    "examples": ["We decided to stay."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "pull",
+    "phonetic": "/pʊl/",
+    "definitions": ["to move something toward yourself"],
+    "examples": ["Pull the door."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "return",
+    "phonetic": "/rɪˈtɜːn/",
+    "definitions": ["to go or come back; to give back"],
+    "examples": ["When will you return?"],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "explain",
+    "phonetic": "/ɪkˈspleɪn/",
+    "definitions": ["to make something clear or easy to understand"],
+    "examples": ["Can you explain this?"],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "hope",
+    "phonetic": "/həʊp/",
+    "definitions": ["to want something to happen"],
+    "examples": ["I hope so."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "develop",
+    "phonetic": "/dɪˈveləp/",
+    "definitions": ["to grow or improve; to create over time"],
+    "examples": ["The city developed quickly."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "carry",
+    "phonetic": "/ˈkæri/",
+    "definitions": ["to hold and take something somewhere"],
+    "examples": ["Can you carry this bag?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "break",
+    "phonetic": "/breɪk/",
+    "definitions": ["to separate into pieces; to interrupt"],
+    "examples": ["Don't break it."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "receive",
+    "phonetic": "/rɪˈsiːv/",
+    "definitions": ["to get something that is given or sent"],
+    "examples": ["I received your email."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "agree",
+    "phonetic": "/əˈɡriː/",
+    "definitions": ["to have the same opinion"],
+    "examples": ["I agree with you."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "support",
+    "phonetic": "/səˈpɔːt/",
+    "definitions": ["to help or encourage; to hold up"],
+    "examples": ["Thank you for your support."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "hit",
+    "phonetic": "/hɪt/",
+    "definitions": ["to strike; to reach a target"],
+    "examples": ["Don't hit the ball too hard."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "produce",
+    "phonetic": "/prəˈdjuːs/",
+    "definitions": ["to make or create something"],
+    "examples": ["The factory produces cars."],
+    "cefrBand": "B1",
+    "pos": "verb"
+  },
+  {
+    "headword": "eat",
+    "phonetic": "/iːt/",
+    "definitions": ["to put food in your mouth and swallow it"],
+    "examples": ["What did you eat?"],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "cover",
+    "phonetic": "/ˈkʌvə/",
+    "definitions": ["to put something over; to deal with a subject"],
+    "examples": ["Cover the pan."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "catch",
+    "phonetic": "/kætʃ/",
+    "definitions": ["to take hold of something moving; to get an illness"],
+    "examples": ["Catch the ball."],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "draw",
+    "phonetic": "/drɔː/",
+    "definitions": ["to make a picture; to pull"],
+    "examples": ["She drew a map."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "choose",
+    "phonetic": "/tʃuːz/",
+    "definitions": ["to decide which thing you want"],
+    "examples": ["Choose one."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "cause",
+    "phonetic": "/kɔːz/",
+    "definitions": ["to make something happen"],
+    "examples": ["What caused the delay?"],
+    "cefrBand": "A2",
+    "pos": "verb"
+  },
+  {
+    "headword": "point",
+    "phonetic": "/pɔɪnt/",
+    "definitions": ["to show direction with a finger; an idea or detail"],
+    "examples": ["Point to the door."],
+    "cefrBand": "A1",
+    "pos": "verb"
+  },
+  {
+    "headword": "look forward to",
+    "phonetic": "/lʊk ˈfɔːwəd tuː/",
+    "definitions": ["to feel happy and excited about a future event"],
+    "examples": ["I look forward to meeting you."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "get used to",
+    "phonetic": "/ɡet juːst tuː/",
+    "definitions": ["to become familiar with something so it is no longer strange"],
+    "examples": ["You'll get used to the weather."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "as well as",
+    "phonetic": "/əz wel əz/",
+    "definitions": ["in addition to"],
+    "examples": ["She speaks French as well as English."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "in order to",
+    "phonetic": "/ɪn ˈɔːdə tuː/",
+    "definitions": ["with the purpose of"],
+    "examples": ["I left early in order to catch the train."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "take care of",
+    "phonetic": "/teɪk keə əv/",
+    "definitions": ["to look after someone or something"],
+    "examples": ["Can you take care of my cat?"],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "end up",
+    "phonetic": "/end ʌp/",
+    "definitions": ["to finally be in a particular place or situation"],
+    "examples": ["We ended up staying home."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "find out",
+    "phonetic": "/faɪnd aʊt/",
+    "definitions": ["to discover information"],
+    "examples": ["I need to find out the truth."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "give up",
+    "phonetic": "/ɡɪv ʌp/",
+    "definitions": ["to stop trying; to quit a habit"],
+    "examples": ["Don't give up."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "carry on",
+    "phonetic": "/ˈkæri ɒn/",
+    "definitions": ["to continue"],
+    "examples": ["Carry on with your work."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "make sure",
+    "phonetic": "/meɪk ʃʊə/",
+    "definitions": ["to check that something is true or will happen"],
+    "examples": ["Make sure the door is locked."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "at least",
+    "phonetic": "/ət liːst/",
+    "definitions": ["not less than; used to emphasize a minimum"],
+    "examples": ["At least try."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "in fact",
+    "phonetic": "/ɪn fækt/",
+    "definitions": ["used to emphasize the truth of something"],
+    "examples": ["In fact, I already knew."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "by the way",
+    "phonetic": "/baɪ ðə weɪ/",
+    "definitions": ["used to introduce a new or side topic"],
+    "examples": ["By the way, did you call her?"],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "for example",
+    "phonetic": "/fər ɪɡˈzɑːmpl/",
+    "definitions": ["used to introduce an illustration"],
+    "examples": ["Many fruits, for example apples, are healthy."],
+    "cefrBand": "A1",
+    "pos": "phrase",
+    "frequencyBand": 1
+  },
+  {
+    "headword": "of course",
+    "phonetic": "/əv kɔːs/",
+    "definitions": ["used to say yes or that something is obvious"],
+    "examples": ["Of course I can help."],
+    "cefrBand": "A1",
+    "pos": "phrase",
+    "frequencyBand": 1
+  },
+  {
+    "headword": "rather than",
+    "phonetic": "/ˈrɑːðə ðən/",
+    "definitions": ["instead of"],
+    "examples": ["I walked rather than took a taxi."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "deal with",
+    "phonetic": "/diːl wɪð/",
+    "definitions": ["to handle a problem or situation"],
+    "examples": ["How do you deal with stress?"],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "depend on",
+    "phonetic": "/dɪˈpend ɒn/",
+    "definitions": ["to be decided by; to need support from"],
+    "examples": ["It depends on the weather."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "according to",
+    "phonetic": "/əˈkɔːdɪŋ tuː/",
+    "definitions": ["as stated by"],
+    "examples": ["According to the news, it will rain."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "as soon as",
+    "phonetic": "/əz suːn əz/",
+    "definitions": ["immediately after"],
+    "examples": ["Call me as soon as you arrive."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "in spite of",
+    "phonetic": "/ɪn spaɪt əv/",
+    "definitions": ["although something is true"],
+    "examples": ["We went out in spite of the rain."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "on the other hand",
+    "phonetic": "/ɒn ði ˈʌðə hænd/",
+    "definitions": ["used to present a contrasting point"],
+    "examples": ["It's cheap. On the other hand, quality is low."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "take part in",
+    "phonetic": "/teɪk pɑːt ɪn/",
+    "definitions": ["to participate in an activity"],
+    "examples": ["She took part in the race."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "pay attention",
+    "phonetic": "/peɪ əˈtenʃn/",
+    "definitions": ["to listen or watch carefully"],
+    "examples": ["Pay attention to the details."],
+    "cefrBand": "A2",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "figure out",
+    "phonetic": "/ˈfɪɡə aʊt/",
+    "definitions": ["to understand or solve something"],
+    "examples": ["I can't figure out this problem."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "come up with",
+    "phonetic": "/kʌm ʌp wɪð/",
+    "definitions": ["to think of an idea or plan"],
+    "examples": ["She came up with a better solution."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "get rid of",
+    "phonetic": "/ɡet rɪd əv/",
+    "definitions": ["to remove or throw away something unwanted"],
+    "examples": ["I need to get rid of old clothes."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "keep in mind",
+    "phonetic": "/kiːp ɪn maɪnd/",
+    "definitions": ["to remember a piece of information"],
+    "examples": ["Keep in mind the deadline."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "in terms of",
+    "phonetic": "/ɪn tɜːmz əv/",
+    "definitions": ["with regard to; concerning"],
+    "examples": ["In terms of price, it's fine."],
+    "cefrBand": "B2",
+    "pos": "phrase",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "as a result",
+    "phonetic": "/əz ə rɪˈzʌlt/",
+    "definitions": ["because of something that happened"],
+    "examples": ["It rained. As a result, the match was canceled."],
+    "cefrBand": "B1",
+    "pos": "phrase",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "documentary",
+    "phonetic": "/ˌdɒkjʊˈmentri/",
+    "definitions": ["a film or program about real events or facts"],
+    "examples": ["We watched a nature documentary."],
+    "cefrBand": "B1",
+    "pos": "noun",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "subtitle",
+    "phonetic": "/ˈsʌbtaɪtl/",
+    "definitions": ["translated text shown at the bottom of a screen"],
+    "examples": ["I watch films with English subtitles."],
+    "cefrBand": "B1",
+    "pos": "noun",
+    "frequencyBand": 4
+  },
+  {
+    "headword": "vocabulary",
+    "phonetic": "/vəˈkæbjələri/",
+    "definitions": ["all the words a person knows or that are used in a language"],
+    "examples": ["Reading helps build vocabulary."],
+    "cefrBand": "A2",
+    "pos": "noun",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "pronunciation",
+    "phonetic": "/prəˌnʌnsiˈeɪʃn/",
+    "definitions": ["the way a word is spoken"],
+    "examples": ["Her pronunciation is clear."],
+    "cefrBand": "A2",
+    "pos": "noun",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "context",
+    "phonetic": "/ˈkɒntekst/",
+    "definitions": ["the situation or words around something that help explain it"],
+    "examples": ["Guess the meaning from context."],
+    "cefrBand": "B1",
+    "pos": "noun",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "fluent",
+    "phonetic": "/ˈfluːənt/",
+    "definitions": ["able to speak a language easily and well"],
+    "examples": ["She is fluent in English."],
+    "cefrBand": "B1",
+    "pos": "adjective",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "native",
+    "phonetic": "/ˈneɪtɪv/",
+    "definitions": ["relating to the place where you were born; a native speaker"],
+    "examples": ["a native speaker of English"],
+    "cefrBand": "B1",
+    "pos": "adjective",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "improve",
+    "phonetic": "/ɪmˈpruːv/",
+    "definitions": ["to make or become better"],
+    "examples": ["I want to improve my English."],
+    "cefrBand": "A2",
+    "pos": "verb",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "practice",
+    "phonetic": "/ˈpræktɪs/",
+    "definitions": ["to do something regularly to improve skill"],
+    "examples": ["Practice speaking every day."],
+    "cefrBand": "A1",
+    "pos": "verb",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "review",
+    "phonetic": "/rɪˈvjuː/",
+    "definitions": ["to look at or study again"],
+    "examples": ["Review your notes before the test."],
+    "cefrBand": "A2",
+    "pos": "verb",
+    "frequencyBand": 2
+  },
+  {
+    "headword": "expression",
+    "phonetic": "/ɪkˈspreʃn/",
+    "definitions": ["a word or phrase; a look on someone's face"],
+    "examples": ["That's a useful expression."],
+    "cefrBand": "B1",
+    "pos": "noun",
+    "frequencyBand": 3
+  },
+  {
+    "headword": "idiom",
+    "phonetic": "/ˈɪdiəm/",
+    "definitions": ["a phrase with a meaning different from the literal words"],
+    "examples": ["'Break a leg' is an idiom."],
+    "cefrBand": "B2",
+    "pos": "noun",
+    "frequencyBand": 4
+  },
+  {
+    "headword": "subtitle",
+    "phonetic": "/ˈsʌbtaɪtl/",
+    "definitions": ["words at the bottom of a film or video that translate or show speech"],
+    "examples": ["Turn on the subtitles."],
+    "cefrBand": "B1",
+    "pos": "noun",
+    "frequencyBand": 4
+  }
+]

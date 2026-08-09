@@ -1,0 +1,59 @@
+{
+  "name": "english-clip",
+  "private": true,
+  "version": "0.1.0",
+  "description": "本地优先的英语词句剪贴本",
+  "author": "even",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "app": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "prebuild": "node scripts/generate-icons.mjs && node scripts/build-lexicon.mjs",
+    "build": "tsc -b && vite build",
+    "build:lexicon": "node scripts/build-lexicon.mjs",
+    "build:icons": "node scripts/generate-icons.mjs",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.2",
+    "idb": "^8.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "concurrently": "^9.2.1",
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
+    "oxlint": "^1.75.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0",
+    "wait-on": "^8.0.4"
+  },
+  "build": {
+    "appId": "app.englishclip.desktop",
+    "productName": "英语剪贴本",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        "dmg",
+        "dir"
+      ],
+      "icon": "public/pwa-512.png"
+    }
+  }
+}
