@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { User } from '@supabase/supabase-js'
-import { exportEntriesJson } from '../lib/export'
+import type { SyncUser as User } from '../lib/sync'
+import { exportEntriesJson, exportEntriesMarkdown } from '../lib/export'
+import {
+  addCategory,
+  DEFAULT_CATEGORIES,
+  listCategories,
+  removeCategory,
+} from '../lib/categories'
 import {
   getCurrentUser,
   getLastSyncAt,
@@ -18,11 +24,14 @@ export function SettingsView() {
   const [message, setMessage] = useState('')
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [categories, setCategories] = useState<string[]>([])
+  const [newCategory, setNewCategory] = useState('')
   const configured = isSyncConfigured()
 
   async function refresh() {
     setUser(await getCurrentUser())
     setLastSync(await getLastSyncAt())
+    setCategories(await listCategories())
   }
 
   useEffect(() => {
@@ -100,9 +109,11 @@ export function SettingsView() {
                     onClick={() => {
                       setBusy(true)
                       void signUpWithEmail(email, password)
-                        .then(() =>
-                          setMessage('注册成功。若开启了邮箱确认，请先查收邮件再登录。'),
-                        )
+                        .then(() => syncNow())
+                        .then((r) => {
+                          setMessage(r.ok ? `注册成功，已同步 ${r.message.replace('已同步 ', '')}` : `注册成功（${r.message}）`)
+                          return refresh()
+                        })
                         .catch((e: Error) => setMessage(e.message))
                         .finally(() => setBusy(false))
                     }}
@@ -148,11 +159,92 @@ export function SettingsView() {
       </section>
 
       <section className="panel">
-        <h2>导出备份</h2>
-        <p className="muted">额外保一份 JSON 到手机/电脑，更稳妥。</p>
-        <button type="button" className="primary" onClick={() => void exportEntriesJson()}>
-          导出我的本子
-        </button>
+        <h2>介质分类</h2>
+        <p className="muted">
+          默认：影视剧 / YouTube / 播客 / 阅读 / 其他。可加自定义；点 × 仅能删自定义项。
+        </p>
+        <div className="kind-row">
+          {categories.map((c) => {
+            const core = (DEFAULT_CATEGORIES as readonly string[]).includes(c)
+            return (
+              <button
+                key={c}
+                type="button"
+                className="chip"
+                onClick={() => {
+                  if (core) {
+                    setMessage('默认介质分类不能删除')
+                    return
+                  }
+                  void removeCategory(c).then((list) => {
+                    setCategories(list)
+                    setMessage(`已删除分类：${c}`)
+                  })
+                }}
+              >
+                {c}
+                {core ? '' : ' ×'}
+              </button>
+            )
+          })}
+        </div>
+        <div className="row" style={{ marginTop: '0.7rem' }}>
+          <input
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            placeholder="自定义，如：课堂 / 工作"
+          />
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              const name = newCategory.trim()
+              if (!name) return
+              void addCategory(name).then((list) => {
+                setCategories(list)
+                setNewCategory('')
+                setMessage(`已添加分类：${name}`)
+              })
+            }}
+          >
+            添加分类
+          </button>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>导出</h2>
+        <p className="muted">Markdown 方便阅读；JSON 适合完整备份、以后再导入。</p>
+        <div className="row">
+          <button
+            type="button"
+            className="primary"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true)
+              void exportEntriesMarkdown()
+                .then(() => setMessage('已导出 Markdown（手机上可能弹出分享菜单）'))
+                .catch((e: Error) => setMessage(e.message || '导出失败'))
+                .finally(() => setBusy(false))
+            }}
+          >
+            导出 Markdown
+          </button>
+          <button
+            type="button"
+            className="chip"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true)
+              void exportEntriesJson()
+                .then(() => setMessage('已导出 JSON 备份'))
+                .catch((e: Error) => setMessage(e.message || '导出失败'))
+                .finally(() => setBusy(false))
+            }}
+          >
+            导出 JSON 备份
+          </button>
+        </div>
       </section>
     </div>
   )

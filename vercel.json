@@ -1,3 +1,8 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/((?!assets/|lexicon\\.json|zh-gloss\\.json|sw\\.js|manifest\\.webmanifest|favicon\\.svg|icons\\.svg|pwa-.*\\.png).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

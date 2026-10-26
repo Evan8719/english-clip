@@ -1,42 +1,108 @@
-import { useEffect, useState } from 'react'
-import type { Enrichment, EntryKind } from '../types'
+import { useEffect, useMemo, useState } from 'react'
+import type { Enrichment, Entry, EntryKind } from '../types'
 import { detectKind } from '../lib/normalize'
 import { enrichText } from '../lib/enrich'
 import { frequencyLabel } from '../lib/lexicon'
+import {
+  addCategory,
+  categoryHints,
+  getLastCategory,
+  listCategories,
+  listSources,
+  normalizeCategory,
+  setLastCategory,
+} from '../lib/categories'
+import { speakEnglish } from '../lib/speech'
+
+export interface EntryFormInput {
+  text: string
+  kind: EntryKind
+  context?: string
+  note?: string
+  category?: string
+  source?: string
+  sourceDetail?: string
+  mySentence?: string
+  enrichment?: Enrichment
+}
 
 interface Props {
   open: boolean
+  entry?: Entry | null
   initialText?: string
+  entries?: Entry[]
   onClose: () => void
-  onSave: (input: {
-    text: string
-    kind: EntryKind
-    context?: string
-    note?: string
-    enrichment?: Enrichment
-  }) => Promise<void>
+  onSave: (input: EntryFormInput) => Promise<void>
 }
 
-export function CaptureModal({ open, initialText = '', onClose, onSave }: Props) {
+export function CaptureModal({
+  open,
+  entry = null,
+  initialText = '',
+  entries = [],
+  onClose,
+  onSave,
+}: Props) {
+  const editing = Boolean(entry)
   const [text, setText] = useState(initialText)
   const [context, setContext] = useState('')
   const [note, setNote] = useState('')
+  const [source, setSource] = useState('')
+  const [sourceDetail, setSourceDetail] = useState('')
+  const [mySentence, setMySentence] = useState('')
   const [kind, setKind] = useState<EntryKind>('word')
   const [enrichment, setEnrichment] = useState<Enrichment | undefined>()
   const [enriching, setEnriching] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [categories, setCategories] = useState<string[]>([])
+  const [category, setCategory] = useState('其他')
+  const [newCategory, setNewCategory] = useState('')
+  const [showMore, setShowMore] = useState(false)
+  const [showCustomCat, setShowCustomCat] = useState(false)
+
+  const hints = useMemo(() => categoryHints(category), [category])
+  const sourceSuggestions = useMemo(
+    () => listSources(entries, category),
+    [entries, category],
+  )
+  const datalistId = 'source-suggestions'
 
   useEffect(() => {
     if (!open) return
+    void listCategories().then(setCategories)
+    setNewCategory('')
+    setShowCustomCat(false)
+
+    if (entry) {
+      setText(entry.text)
+      setContext(entry.context ?? '')
+      setNote(entry.note ?? '')
+      setSource(entry.source ?? '')
+      setSourceDetail(entry.sourceDetail ?? '')
+      setMySentence(entry.mySentence ?? '')
+      setKind(entry.kind)
+      setEnrichment(entry.enrichment)
+      setCategory(normalizeCategory(entry.category))
+      setShowMore(
+        Boolean(entry.context || entry.note || entry.mySentence),
+      )
+      return
+    }
+
     setText(initialText)
     setContext('')
     setNote('')
+    setSource('')
+    setSourceDetail('')
+    setMySentence('')
     setKind(detectKind(initialText || 'word'))
     setEnrichment(undefined)
-  }, [open, initialText])
+    setShowMore(false)
+    void getLastCategory().then((c) => setCategory(normalizeCategory(c)))
+  }, [open, entry, initialText])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || editing) return
     const trimmed = text.trim()
     if (!trimmed) {
       setEnrichment(undefined)
@@ -50,7 +116,7 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
         .finally(() => setEnriching(false))
     }, 280)
     return () => window.clearTimeout(handle)
-  }, [text, open])
+  }, [text, open, editing])
 
   if (!open) return null
 
@@ -58,11 +124,17 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
     if (!text.trim() || saving) return
     setSaving(true)
     try {
+      const cat = normalizeCategory(category)
+      await setLastCategory(cat)
       await onSave({
         text: text.trim(),
         kind,
         context: context.trim() || undefined,
         note: note.trim() || undefined,
+        category: cat,
+        source: source.trim() || undefined,
+        sourceDetail: sourceDetail.trim() || undefined,
+        mySentence: mySentence.trim() || undefined,
         enrichment,
       })
       onClose()
@@ -77,11 +149,11 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="记录"
+        aria-label={editing ? '编辑' : '记录'}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="modal-header">
-          <h2>记录</h2>
+          <h2>{editing ? '编辑卡片' : '记录'}</h2>
           <button type="button" className="ghost" onClick={onClose}>
             关闭
           </button>
@@ -89,20 +161,30 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
 
         <label className="field">
           <span>词 / 短语 / 句子</span>
-          <input
-            autoFocus
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="例如：look forward to"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                void handleSave()
-              }
-            }}
-          />
+          <div className="row">
+            <input
+              autoFocus={!editing}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="例如：look forward to"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  void handleSave()
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="chip"
+              disabled={!text.trim()}
+              onClick={() => void speakEnglish(text, enrichment?.audioUrl)}
+            >
+              听发音
+            </button>
+          </div>
         </label>
 
-        <div className="kind-row">
+        <div className="kind-row tight">
           {(['word', 'phrase', 'sentence'] as EntryKind[]).map((k) => (
             <button
               key={k}
@@ -115,29 +197,124 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
           ))}
         </div>
 
-        <label className="field">
-          <span>原句语境（可选）</span>
-          <textarea
-            rows={2}
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            placeholder="你在哪看到的那句原文"
-          />
-        </label>
+        <section className="origin-box">
+          <div className="origin-title">出处</div>
+          <div className="kind-row tight">
+            {categories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={category === c ? 'chip active' : 'chip'}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setShowCustomCat((v) => !v)}
+            >
+              +
+            </button>
+          </div>
 
-        <label className="field">
-          <span>我的理解（可选）</span>
-          <textarea
-            rows={2}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="我会怎么用 / 我的理解"
-          />
-        </label>
+          {showCustomCat && (
+            <div className="row" style={{ marginTop: '0.5rem' }}>
+              <input
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="自定义分类"
+              />
+              <button
+                type="button"
+                className="chip"
+                onClick={() => {
+                  const name = newCategory.trim()
+                  if (!name) return
+                  void addCategory(name).then((list) => {
+                    setCategories(list)
+                    setCategory(name)
+                    setNewCategory('')
+                    setShowCustomCat(false)
+                  })
+                }}
+              >
+                添加
+              </button>
+            </div>
+          )}
+
+          <label className="field compact">
+            <span>来源</span>
+            <input
+              list={datalistId}
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder={hints.source}
+              autoComplete="off"
+            />
+            <datalist id={datalistId}>
+              {sourceSuggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </label>
+
+          <label className="field compact">
+            <span>详情</span>
+            <input
+              value={sourceDetail}
+              onChange={(e) => setSourceDetail(e.target.value)}
+              placeholder={hints.detail}
+            />
+          </label>
+        </section>
+
+        <button
+          type="button"
+          className="more-toggle"
+          aria-expanded={showMore}
+          onClick={() => setShowMore((v) => !v)}
+        >
+          {showMore ? '收起更多 ▲' : '语境 / 理解 / 造句 ▼'}
+        </button>
+
+        {showMore && (
+          <div className="more-block">
+            <label className="field compact">
+              <span>原句语境</span>
+              <textarea
+                rows={2}
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                placeholder="看到的那句原文"
+              />
+            </label>
+            <label className="field compact">
+              <span>我的理解</span>
+              <textarea
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="中文理解 / 备注"
+              />
+            </label>
+            <label className="field compact">
+              <span>我会说的话</span>
+              <textarea
+                rows={2}
+                value={mySentence}
+                onChange={(e) => setMySentence(e.target.value)}
+                placeholder="用这个词写一句你会说的英文"
+              />
+            </label>
+          </div>
+        )}
 
         <section className="enrich-box">
           <div className="enrich-title">
-            <span>自动补全</span>
+            <span>释义</span>
             {enriching && <span className="muted">查找中…</span>}
           </div>
           {enrichment ? (
@@ -150,6 +327,9 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
                 {enrichment.cefrBand ? ` · CEFR ${enrichment.cefrBand}` : null}
                 {enrichment.pos ? ` · ${enrichment.pos}` : null}
               </p>
+              {enrichment.definitionsZh?.length ? (
+                <p className="zh-def">{enrichment.definitionsZh.join('；')}</p>
+              ) : null}
               {enrichment.definitions.slice(0, 2).map((d) => (
                 <p key={d} className="def">
                   {d}
@@ -160,9 +340,26 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
                   e.g. {ex}
                 </p>
               ))}
+              {editing && (
+                <button
+                  type="button"
+                  className="chip"
+                  style={{ marginTop: '0.5rem' }}
+                  onClick={() => {
+                    setEnriching(true)
+                    void enrichText(text.trim())
+                      .then((result) => {
+                        if (result) setEnrichment(result)
+                      })
+                      .finally(() => setEnriching(false))
+                  }}
+                >
+                  重新补全
+                </button>
+              )}
             </div>
           ) : (
-            <p className="muted">输入后将尝试本地词库补全；未命中时可联网补一次并缓存。</p>
+            <p className="muted tiny">输入后自动补全；未命中可联网查一次。</p>
           )}
         </section>
 
@@ -172,7 +369,7 @@ export function CaptureModal({ open, initialText = '', onClose, onSave }: Props)
           disabled={!text.trim() || saving}
           onClick={() => void handleSave()}
         >
-          {saving ? '保存中…' : '保存'}
+          {saving ? '保存中…' : editing ? '保存修改' : '保存'}
         </button>
       </div>
     </div>

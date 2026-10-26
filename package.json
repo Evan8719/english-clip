@@ -11,6 +11,7 @@
     "app": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "prebuild": "node scripts/generate-icons.mjs && node scripts/build-lexicon.mjs",
     "build": "tsc -b && vite build",
+    "build:web": "tsc -b && vite build",
     "build:lexicon": "node scripts/build-lexicon.mjs",
     "build:icons": "node scripts/generate-icons.mjs",
     "dist:mac": "npm run build && electron-builder --mac",
@@ -18,7 +19,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.2",
     "idb": "^8.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

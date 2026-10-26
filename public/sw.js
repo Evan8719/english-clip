@@ -1,6 +1,14 @@
 /* English Clip — lightweight offline shell + lexicon cache */
-const VERSION = 'english-clip-v1'
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/pwa-192.png', '/pwa-512.png']
+const VERSION = 'english-clip-v8'
+const SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/pwa-192.png',
+  '/pwa-512.png',
+  '/zh-gloss.json',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -21,10 +29,11 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
 
   const url = new URL(request.url)
-  const isLexicon = url.pathname.endsWith('/lexicon.json')
+  const isStaticPack =
+    url.pathname.endsWith('/lexicon.json') || url.pathname.endsWith('/zh-gloss.json')
   const isSameOrigin = url.origin === self.location.origin
 
-  if (isLexicon) {
+  if (isStaticPack) {
     event.respondWith(cacheFirst(request))
     return
   }

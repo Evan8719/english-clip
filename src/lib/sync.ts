@@ -1,4 +1,3 @@
-import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import type { Entry } from '../types'
 import {
   listAllEntriesIncludingDeleted,
@@ -6,61 +5,152 @@ import {
 } from '../db/entries'
 import { getDb } from '../db/database'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+/**
+ * 云同步（自建后端版）
+ *
+ * 后端：english-clip 原生 Node 服务（见 nas/server.mjs）
+ * 认证：邮箱 + 密码 → Bearer Token 存 localStorage（不用 Cookie，跨域友好）
+ * 语义：与 Supabase 版保持一致——本地优先，按 updatedAt 取新，双向合并。
+ */
 
-let client: SupabaseClient | null = null
+export interface SyncUser {
+  id: string
+  email: string | null
+}
+
+const RAW_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
+const API_BASE = RAW_BASE.replace(/\/$/, '')
+const TOKEN_KEY = 'english-clip.api.token'
+const USER_KEY = 'english-clip.api.user'
+
 let syncTimer: number | null = null
+let cachedUser: SyncUser | null = readStoredUser()
 
-export function isSyncConfigured(): boolean {
-  return Boolean(url && anonKey)
-}
-
-function getClient(): SupabaseClient | null {
-  if (!isSyncConfigured()) return null
-  if (!client) {
-    client = createClient(url!, anonKey!)
+function readStoredUser(): SyncUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    return raw ? (JSON.parse(raw) as SyncUser) : null
+  } catch {
+    return null
   }
-  return client
 }
 
-export async function getCurrentUser(): Promise<User | null> {
-  const sb = getClient()
-  if (!sb) return null
-  const { data } = await sb.auth.getUser()
-  return data.user
+function storeSession(token: string | null, user: SyncUser | null) {
+  cachedUser = user
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
+    else localStorage.removeItem(USER_KEY)
+  } catch {
+    /* 隐私模式下忽略 */
+  }
 }
 
-export async function signInAnonymously(): Promise<User | null> {
-  const sb = getClient()
-  if (!sb) return null
-  const existing = await getCurrentUser()
-  if (existing) return existing
-  const { data, error } = await sb.auth.signInAnonymously()
-  if (error) throw error
-  return data.user
+function getToken(): string {
+  try {
+    return localStorage.getItem(TOKEN_KEY) ?? ''
+  } catch {
+    return ''
+  }
 }
 
-export async function signInWithEmail(email: string, password: string): Promise<User | null> {
-  const sb = getClient()
-  if (!sb) return null
-  const { data, error } = await sb.auth.signInWithPassword({ email, password })
-  if (error) throw error
-  return data.user
+async function call(
+  path: string,
+  options: { method?: string; body?: unknown; token?: string } = {},
+): Promise<{ status: number; data: Record<string, unknown> }> {
+  const headers: Record<string, string> = {}
+  const token = options.token ?? getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    cache: 'no-store',
+  })
+
+  let data: Record<string, unknown> = {}
+  try {
+    data = (await response.json()) as Record<string, unknown>
+  } catch {
+    data = {}
+  }
+  return { status: response.status, data }
 }
 
-export async function signUpWithEmail(email: string, password: string): Promise<User | null> {
-  const sb = getClient()
-  if (!sb) return null
-  const { data, error } = await sb.auth.signUp({ email, password })
-  if (error) throw error
-  return data.user
+/** 后端始终随前端一起部署，永远可用 */
+export function isSyncConfigured(): boolean {
+  return true
+}
+
+export function isLoggedIn(): boolean {
+  return Boolean(getToken())
+}
+
+export async function getCurrentUser(): Promise<SyncUser | null> {
+  if (!getToken()) {
+    storeSession(null, null)
+    return null
+  }
+  try {
+    const { status, data } = await call('/api/auth/me')
+    if (status !== 200) {
+      storeSession(null, null)
+      return null
+    }
+    const user = data.user as SyncUser
+    storeSession(getToken(), user)
+    return user
+  } catch {
+    // 离线时保留本地会话，不打断使用
+    return cachedUser
+  }
+}
+
+export async function signInWithEmail(
+  email: string,
+  password: string,
+): Promise<SyncUser | null> {
+  const { status, data } = await call('/api/auth/login', {
+    method: 'POST',
+    body: { email, password },
+    token: '',
+  })
+  if (status !== 200) {
+    throw new Error(String(data.message || '登录失败'))
+  }
+  storeSession(String(data.token), data.user as SyncUser)
+  return data.user as SyncUser
+}
+
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  inviteCode = '',
+): Promise<SyncUser | null> {
+  const { status, data } = await call('/api/auth/register', {
+    method: 'POST',
+    body: { email, password, inviteCode },
+    token: '',
+  })
+  if (status !== 200) {
+    throw new Error(String(data.message || '注册失败'))
+  }
+  storeSession(String(data.token), data.user as SyncUser)
+  return data.user as SyncUser
 }
 
 export async function signOut(): Promise<void> {
-  const sb = getClient()
-  if (!sb) return
-  await sb.auth.signOut()
+  if (getToken()) {
+    try {
+      await call('/api/auth/logout', { method: 'POST' })
+    } catch {
+      /* 离线也允许本地退出 */
+    }
+  }
+  storeSession(null, null)
 }
 
 function mergeByUpdatedAt(local: Entry[], remote: Entry[]): Entry[] {
@@ -75,52 +165,38 @@ function mergeByUpdatedAt(local: Entry[], remote: Entry[]): Entry[] {
 }
 
 export async function syncNow(): Promise<{ ok: boolean; message: string }> {
-  const sb = getClient()
-  if (!sb) {
-    return { ok: false, message: '未配置 Supabase（可选）' }
-  }
-
-  const user = await getCurrentUser()
-  if (!user) {
+  if (!getToken()) {
     return { ok: false, message: '未登录' }
   }
 
-  const local = await listAllEntriesIncludingDeleted()
-  const { data, error } = await sb
-    .from('entries')
-    .select('payload')
-    .eq('user_id', user.id)
+  try {
+    const pulled = await call('/api/entries')
+    if (pulled.status !== 200) {
+      return { ok: false, message: String(pulled.data.message || '同步失败') }
+    }
+    const remote = ((pulled.data.entries as Entry[]) ?? []).filter(Boolean)
+    const local = await listAllEntriesIncludingDeleted()
+    const merged = mergeByUpdatedAt(local, remote)
+    await upsertEntries(merged)
 
-  if (error) {
-    return { ok: false, message: error.message }
+    const pushed = await call('/api/entries', {
+      method: 'POST',
+      body: { entries: merged },
+    })
+    if (pushed.status !== 200) {
+      return { ok: false, message: String(pushed.data.message || '上传失败') }
+    }
+
+    const db = await getDb()
+    await db.put('meta', { key: 'lastSyncAt', value: new Date().toISOString() })
+    return { ok: true, message: `已同步 ${merged.length} 条` }
+  } catch (error) {
+    return { ok: false, message: (error as Error).message || '网络不通，稍后再试' }
   }
-
-  const remote = (data ?? [])
-    .map((row) => row.payload as Entry)
-    .filter(Boolean)
-
-  const merged = mergeByUpdatedAt(local, remote)
-  await upsertEntries(merged)
-
-  const upserts = merged.map((entry) => ({
-    id: entry.id,
-    user_id: user.id,
-    updated_at: entry.updatedAt,
-    payload: entry,
-  }))
-
-  const { error: upError } = await sb.from('entries').upsert(upserts)
-  if (upError) {
-    return { ok: false, message: upError.message }
-  }
-
-  const db = await getDb()
-  await db.put('meta', { key: 'lastSyncAt', value: new Date().toISOString() })
-  return { ok: true, message: `已同步 ${merged.length} 条` }
 }
 
 export function scheduleSilentSync(): void {
-  if (!isSyncConfigured()) return
+  if (!getToken()) return
   if (syncTimer != null) window.clearTimeout(syncTimer)
   syncTimer = window.setTimeout(() => {
     void syncNow()
