@@ -23,6 +23,7 @@ import { getCurrentUser, isSyncConfigured, scheduleSilentSync, syncNow } from '.
 import { CaptureModal } from './components/CaptureModal'
 import { EntryCard } from './components/EntryCard'
 import { LibraryView } from './components/LibraryView'
+import { MaterialsView } from './components/MaterialsView'
 import { SettingsView } from './components/SettingsView'
 
 export default function App() {
@@ -281,6 +282,7 @@ export default function App() {
         )}
 
         {tab === 'library' && <LibraryView onCollect={handleCollect} />}
+        {tab === 'materials' && <MaterialsView />}
         {tab === 'settings' && <SettingsView />}
       </main>
 
@@ -298,6 +300,13 @@ export default function App() {
           onClick={() => setTab('library')}
         >
           词库
+        </button>
+        <button
+          type="button"
+          className={tab === 'materials' ? 'tab active' : 'tab'}
+          onClick={() => setTab('materials')}
+        >
+          素材
         </button>
         <button
           type="button"

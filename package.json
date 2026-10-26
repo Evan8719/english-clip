@@ -7,6 +7,8 @@
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
+    "materials:starter": "node scripts/prepare-starter-materials.mjs",
+    "materials:verify": "node scripts/verify-starter-materials.mjs",
     "dev": "vite",
     "app": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "prebuild": "node scripts/generate-icons.mjs && node scripts/build-lexicon.mjs",
