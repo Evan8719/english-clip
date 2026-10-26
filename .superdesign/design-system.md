@@ -28,6 +28,8 @@ This system preserves the current identity. User explicitly selected warm, quiet
 - Desktop list uses calm horizontal rows separated by fine rules. Optional grid uses compact 2–3 columns for words; long sentences receive wider layout. The default is the complete personal collection with latest first.
 - Mobile has four bottom tabs: 本子 / 复习 / 开口练 / 设置. Desktop sidebar uses the same labels and a green +记录 action.
 - Keep save, playback and practice obvious; move secondary actions into detail/more controls.
+- Within 本子 use secondary tabs 词句 / 素材. Preserve the four main navigation items. Materials are a compact library of audio/text with continuing position, not a separate media entertainment app.
+- Material detail uses the same paper, fine rules and typography: audio controls, precise A–B loop range, transcript paragraphs and saved excerpts. A selected excerpt can be collected as a word/sentence or opened for shadowing and retelling. No fake audio waveform or real podcast branding.
 
 ## Components
 
@@ -46,3 +48,10 @@ This system preserves the current identity. User explicitly selected warm, quiet
 - Do not invent pronunciation percentages, fluency levels, streaks or completed-session history. Show concrete textual feedback, not fake measurement.
 - One concise first-use explanation indicates that online AI receives the selected words, conversation or submitted audio. Local notebook remains usable without AI.
 - No backend/API/provider configuration jargon inside normal learning flows; settings can contain model-service configuration later.
+
+## Material demo rules
+
+- Use only fictional sample material with visible 示例音频 / 示例文本 labels. Playback/progress/import/loop controls demonstrate states without uploading or playing a real file.
+- Audio and transcript remain linked by a stable synthetic material ID and time ranges; a collected example carries its source back-link.
+- On mobile keep the player and key excerpt action usable, wrap controls, and use a clear back action rather than squeezing a desktop split layout.
+- Imported audio is eventually stored on NAS separately from code; online transcription is an explicit action for the selected range. No automatic upload of the full material library.
