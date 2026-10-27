@@ -15,20 +15,22 @@
         "src/components/EntryCard.tsx",
         "src/components/CaptureModal.tsx",
         "src/components/LibraryView.tsx",
+        "src/components/MaterialsView.tsx",
         "src/components/SettingsView.tsx",
         "src/index.css",
         "src/types.ts"
       ],
       "fingerprints": {
         ".superdesign/design-system.md": "4fade5e2a4384a949c9cc7cd4ceee83a62fcad991e36e18d5cb7b11868be2c52",
-        "docs/DESIGN-BRIEF.md": "90a2c1d92b07a90566b39b5e7be825c2671e355e688d086ee3f9b36f2dc15114",
-        "src/App.tsx": "e982ab2b6cd5d8c0c181072316b92286b0451e42cec1e0a5a6e7915a901fa3b5",
+        "docs/DESIGN-BRIEF.md": "c4ecf898bce9af8ca3867f6684210d7e3fa530a81d1483b9f26155cbd83d7684",
+        "src/App.tsx": "c6d8c07df3926ef593ca404cd9b98ea6f500eacda2295dc0a110e80b1c8654f2",
         "src/components/EntryCard.tsx": "ecf0262db594974a8441b6117809fe53b2e58dbbba4f3276d0b6a8231663b774",
         "src/components/CaptureModal.tsx": "2e6f5e378febbb419feb80d39bfde64b18417eb1d4a78af5e27600ac386f3cf0",
         "src/components/LibraryView.tsx": "0168197119eeb7f7c13644150baef6954c80fae20fd1e4a46695cf9e88be2ded",
+        "src/components/MaterialsView.tsx": "2f62057f3266f1613393b3c38fec84b281d0486f6e97268fdd97a2fbec1ce343",
         "src/components/SettingsView.tsx": "adbc0f723514d08442af0b3c3b0f44cf58fd4e400544e859a9cb7216d5322277",
-        "src/index.css": "4745db84649a7d0e5f31cd332257b3fabf91017cceeb76d44eef066d47d00998",
-        "src/types.ts": "d33254c5bf36d60b40681d2a32a3d34d0de2388fa8974f4c2e7b1e9a709ae66a"
+        "src/index.css": "53aee65b57a12f7d68b8fcc7c43f12876c2111169420fe08a1635082f999b669",
+        "src/types.ts": "a74c166f12b770534abe6e04bcbdbc72a030b6c7838236ff573655d5430a890f"
       },
       "referenceIds": [
         "public-pwa-192.png"
@@ -53,9 +55,15 @@
           "title": "English Clip - 素材库",
           "visualDirection": "暖纸色与深绿色；本子内词句/素材二级切换，素材原文、区间循环及收藏关联演示",
           "currentVersion": 7
+        },
+        "c1d13d6c-1547-4eec-b36d-ab3b8bd41efb": {
+          "title": "English Clip · 原版增强手机对照",
+          "visualDirection": "保留原版纸感、粗体词头、点击翻卡和详细记录；手机默认双列，顶部常驻搜索与列数切换，调整按钮展开类型和排序",
+          "currentVersion": 3,
+          "comparisonCandidate": true
         }
       },
-      "updatedAt": "2026-10-26T09:19:09.588Z"
+      "updatedAt": "2026-10-27T08:23:16.689Z"
     }
   }
 }

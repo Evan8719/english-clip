@@ -157,4 +157,105 @@
   el('material-import-form').onsubmit=e=>{e.preventDefault();const title=el('import-title').value.trim();if(!title)return;const kind=el('import-type').value;const lines=el('import-transcript').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);materialItems.unshift({id:'import-demo-'+Date.now(),title,kind,source:el('import-source').value.trim()||'手动导入 · 示例',duration:504,position:0,lines:kind==='audio'?lines.map((text,i)=>({start:i*10,end:i*10+10,text})):[],paragraphs:kind==='text'?(lines.length?lines:['这是导入文字素材的演示。正式使用时可粘贴文章、台词或对话。']):undefined});el('material-import').hidden=true;showMaterials();note('已添加到本次演示的素材库')};document.addEventListener('keydown',e=>{if(e.key==='Escape')el('material-import').hidden=true});showMaterials();
   </script>
 </div>
+<style id="original-enhancement-styles">
+  /* 手机对照稿：延续原版翻卡与记录细节，只优化排布和顶部操作。 */
+  #quick-adjust{position:sticky;top:0;z-index:20;background:#f3efe6f2;backdrop-filter:blur(12px);border-bottom:1px solid #c9d2cb;padding:10px 24px;box-shadow:0 6px 18px #1c241f0b}
+  .quick-main{display:flex;align-items:center;gap:8px}.quick-main .quick-search{flex:1;min-width:0}
+  .quick-main button{min-height:42px;border:1px solid #c9d2cb;border-radius:10px;background:#fffcf6;padding:7px 12px;font-size:12px;color:#1c241f;white-space:nowrap}
+  .quick-search{width:100%;min-height:42px;border:1px solid #c9d2cb;border-radius:12px;background:#fffcf6;padding:8px 12px;color:#1c241f}
+  .quick-options{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .quick-options select,.quick-options button{min-height:40px;border:1px solid #c9d2cb;border-radius:10px;background:#fffcf6;padding:7px 10px;font-size:12px;color:#1c241f}
+  .quick-options select{min-width:0;flex:1}.quick-options button{white-space:nowrap}
+  #quick-menu{display:none}
+  #word-list{padding:14px 24px 32px;display:grid;gap:12px}
+  #word-list.grid-mode{grid-template-columns:repeat(2,minmax(0,1fr));padding:14px 24px 32px}
+  .refined-card{min-width:0;border:1px solid #bfcbbf;border-radius:16px;background:#fffcf6;box-shadow:0 8px 22px #1c241f0e,0 2px 0 #d5ded5;overflow:hidden}
+  .refined-card.sentence{grid-column:1/-1}
+  .flip-surface{display:block;width:100%;min-height:148px;text-align:left;border:0;background:transparent;color:#1c241f;perspective:800px;padding:0}
+  .flip-motion{position:relative;display:grid;min-height:148px;transform-style:preserve-3d;transition:transform .42s ease}
+  .refined-card.flipped .flip-motion{transform:rotateY(180deg)}
+  .flip-side{grid-area:1/1;display:flex;flex-direction:column;padding:17px 17px 14px;backface-visibility:hidden;overflow:hidden}
+  .flip-side.back{transform:rotateY(180deg);background:#edf3e9}
+  .flip-type{font-size:11px;color:#5d6b63;letter-spacing:.06em}
+  .flip-word{display:block;margin-top:8px;font-family:Fraunces,'Songti SC',Georgia,serif;font-size:clamp(21px,2.6vw,29px);font-weight:700;line-height:1.19;overflow-wrap:anywhere}
+  .flip-side.back .flip-word{font-size:clamp(16px,2vw,21px);margin-top:5px}
+  .flip-meaning{margin-top:8px;font-size:17px;font-weight:600;color:#145b4c;line-height:1.4}
+  .flip-hint{margin-top:auto;padding-top:9px;font-size:11px;color:#6a776f}
+  .refined-actions{display:flex;align-items:center;gap:8px;padding:7px 12px 9px;border-top:1px solid #d9e0d7}
+  .refined-actions button{min-height:32px;padding:3px 7px;border-radius:7px;color:#0f6a56;font-size:12px;font-weight:600}
+  .refined-actions button:last-child{margin-left:auto}
+  .refined-actions button:hover{background:#e7f0ec}
+  .capture-extra{border-top:1px solid #c9d2cb;padding-top:14px;margin-top:4px}
+  .capture-extra .kind-pick{display:flex;gap:7px;margin-bottom:13px}
+  .capture-extra .kind-pick button{min-height:38px;padding:6px 13px;border:1px solid #c9d2cb;border-radius:999px;background:#fffcf6;font-size:13px}
+  .capture-extra .kind-pick button.active{background:#dff1ea;border-color:#0f6a56;color:#0f6a56;font-weight:700}
+  .capture-extra details{margin:10px 0 15px;padding:10px 0;border-top:1px solid #e1e6de}
+  .capture-extra summary{cursor:pointer;color:#0f6a56;font-size:13px;font-weight:600}
+  .capture-extra .field{margin:11px 0}
+  .capture-extra .field span{font-size:13px;color:#5d6b63}
+  .capture-extra .field input,.capture-extra .field textarea{font-size:14px}
+  @media(max-width:900px){
+    #quick-adjust{padding:9px 12px}
+    #quick-menu{display:block}
+    #quick-adjust .quick-options{display:none}
+    #quick-adjust.expanded .quick-options{display:flex}
+    .workspace-head{padding-bottom:8px}
+    #word-list,#word-list.grid-mode{padding:12px;gap:9px}
+    .flip-surface,.flip-motion{min-height:145px}
+    .flip-side{padding:13px 11px 10px}
+    .flip-word{font-size:20px}
+    .flip-side.back .flip-word{font-size:16px}
+    .flip-meaning{font-size:15px}
+    .refined-actions{padding:5px 6px 7px;gap:1px}
+    .refined-actions button{font-size:11px;padding:3px 4px}
+  }
+  @media(max-width:350px){#word-list.grid-mode{grid-template-columns:1fr}.refined-card.sentence{grid-column:auto}.quick-options{gap:4px}.quick-options select,.quick-options button{padding:6px}}
+  @media(prefers-reduced-motion:reduce){.flip-motion{transition:none}}
+</style>
+<script id="original-enhancement-interactions">
+  (()=>{
+    const book=el('notebook');
+    const bar=document.createElement('div');
+    bar.id='quick-adjust';
+    bar.setAttribute('aria-label','顶部查找和排布调整');
+    bar.innerHTML='<div class="quick-main"><input id="quick-search" class="quick-search" type="search" aria-label="随时搜索我的本子" placeholder="搜索词句或来源"><button id="quick-grid" type="button" aria-label="切换单列或双列">双列</button><button id="quick-menu" type="button" aria-expanded="false">调整</button></div><div class="quick-options"><select id="quick-kind" aria-label="筛选类型"><option value="">全部词句</option><option value="单词">单词</option><option value="短语">短语</option><option value="句子">句子</option></select><select id="quick-sort" aria-label="排序"><option value="recent">最近记录</option><option value="alpha">字母排序</option></select></div>';
+    book.querySelector('.workspace-head').after(bar);
+    const flipped=new Set();
+    grid=true;
+    renderList=function(){
+      const query=el('search').value.trim().toLowerCase();
+      let list=words.filter(w=>(!kind||w.type===kind)&&(!source||w.source===source)&&[w.text,w.meaning,w.context,w.source,w.note,w.sourceDetail,w.mySentence].some(s=>String(s||'').toLowerCase().includes(query)));
+      if(el('sort').value==='alpha')list=[...list].sort((a,b)=>a.text.localeCompare(b.text));
+      const root=el('word-list');root.classList.toggle('grid-mode',grid);
+      root.innerHTML=list.map(w=>'<article class="refined-card '+(w.type==='句子'?'sentence ':'')+(flipped.has(w.id)?'flipped':'')+'" data-entry="'+w.id+'"><button class="flip-surface" type="button" data-flip="'+w.id+'" aria-label="'+(flipped.has(w.id)?'翻回英文正面':'翻转查看中文释义')+'"><span class="flip-motion"><span class="flip-side front"><span class="flip-type">'+escapeHtml(w.type)+' · '+escapeHtml(w.source)+' · '+escapeHtml(w.time)+'</span><strong class="flip-word">'+escapeHtml(w.text)+'</strong><span class="flip-hint">点按翻转看词义 ↻</span></span><span class="flip-side back"><span class="flip-type">'+escapeHtml(w.type)+' · 中文词义</span><strong class="flip-word">'+escapeHtml(w.text)+'</strong><span class="flip-meaning">'+escapeHtml(w.meaning||'暂无释义，可补充我的理解')+'</span><span class="flip-hint">再点翻回 ↻</span></span></span></button><div class="refined-actions"><button type="button" data-card-audio="'+w.id+'">听发音</button><button type="button" data-card-detail="'+w.id+'">详情与编辑 →</button></div></article>').join('');
+      el('empty').hidden=list.length>0;el('saved-label').textContent=list.length+' 条示例表达';el('result-label').textContent=source||'最近记录';
+      el('quick-search').value=el('search').value;el('quick-kind').value=kind;el('quick-sort').value=el('sort').value;el('quick-grid').textContent=grid?'双列':'单列';el('quick-grid').setAttribute('aria-pressed',String(grid));
+      root.querySelectorAll('[data-flip]').forEach(button=>button.onclick=()=>{const id=Number(button.dataset.flip);const card=button.closest('.refined-card');if(flipped.has(id))flipped.delete(id);else flipped.add(id);card.classList.toggle('flipped',flipped.has(id));button.setAttribute('aria-label',flipped.has(id)?'翻回英文正面':'翻转查看中文释义')});
+      root.querySelectorAll('[data-card-detail]').forEach(button=>button.onclick=()=>{selected=Number(button.dataset.cardDetail);renderDetail();el('detail').classList.add('mobile-open')});
+      root.querySelectorAll('[data-card-audio]').forEach(button=>button.onclick=()=>note('发音入口演示；正式版沿用原有发音功能'));
+    };
+    el('quick-search').oninput=e=>{el('search').value=e.target.value;renderList()};
+    el('quick-kind').onchange=e=>{kind=e.target.value;renderList()};
+    el('quick-sort').onchange=e=>{el('sort').value=e.target.value;renderList()};
+    el('quick-grid').onclick=()=>{grid=!grid;renderList()};
+    el('quick-menu').onclick=()=>{const open=bar.classList.toggle('expanded');el('quick-menu').setAttribute('aria-expanded',String(open));el('quick-menu').textContent=open?'收起':'调整'};
+    const extra=document.createElement('div');extra.className='capture-extra';
+    extra.innerHTML='<div class="field"><span>记录类型</span><div class="kind-pick" id="capture-kind"><button type="button" data-capture-kind="单词">单词</button><button type="button" data-capture-kind="短语">短语</button><button type="button" data-capture-kind="句子">句子</button></div></div><label class="field"><span>分类 · 沿用上次选择</span><input id="capture-category" placeholder="例如：阅读、影视剧，或自定义分类"></label><label class="field"><span>来源详情 · 选填</span><input id="capture-source-detail" placeholder="例如：节目名 / 章节 / 时间点"></label><details id="capture-more"><summary>语境 / 理解 / 造句 · 展开填写</summary><label class="field"><span>我的笔记</span><textarea id="capture-note" rows="2" placeholder="这句话在这里是什么意思？"></textarea></label><label class="field"><span>我会说的话</span><textarea id="capture-my-sentence" rows="2" placeholder="用这个词写一句自己会说的英文"></textarea></label></details><p class="text-xs text-muted leading-6">原版的听发音与自动查词会保留；这是不连接正式词库的界面演示。</p>';
+    el('capture-status').before(extra);
+    let captureKind='单词',lastCategory='其他';const pickKind=value=>{captureKind=value;extra.querySelectorAll('[data-capture-kind]').forEach(button=>button.classList.toggle('active',button.dataset.captureKind===value))};
+    extra.querySelectorAll('[data-capture-kind]').forEach(button=>button.onclick=()=>pickKind(button.dataset.captureKind));
+    const oldOpen=openCapture;
+    openCapture=function(w){oldOpen(w);pickKind(w?.type||(/\s/.test(w?.text||'')?'短语':'单词'));el('capture-category').value=w?.category||lastCategory;el('capture-source-detail').value=w?.sourceDetail||'';el('capture-note').value=w?.note||'';el('capture-my-sentence').value=w?.mySentence||'';el('capture-more').open=Boolean(w?.note||w?.mySentence)};
+    el('capture-text').addEventListener('input',()=>{if(editId)return;const text=el('capture-text').value.trim();pickKind(/[.!?。！？]$/.test(text)?'句子':/\s/.test(text)?'短语':'单词')});
+    saveCapture=function(keep){
+      const text=el('capture-text').value.trim();if(!text){el('capture-text').focus();return}
+      const context=el('capture-context').value.trim();const existing=words.find(w=>w.text.toLowerCase()===text.toLowerCase()&&String(w.context||'').toLowerCase()===context.toLowerCase()&&w.id!==editId);if(existing){el('capture-status').textContent='已有相同表达和原句；可以打开详情继续补充。';return}
+      const w={id:editId||Date.now(),materialRef:pendingMaterialRef,text,meaning:el('capture-meaning').value.trim()||'释义待补充',context:el('capture-context').value.trim(),source:el('capture-source').value,sourceDetail:el('capture-source-detail').value.trim(),category:el('capture-category').value.trim()||'其他',note:el('capture-note').value.trim(),mySentence:el('capture-my-sentence').value.trim(),type:captureKind,time:'刚刚'};
+      lastCategory=w.category;if(editId)words.splice(words.findIndex(x=>x.id===editId),1);words.unshift(w);flipped.delete(w.id);selected=w.id;kind='';source='';el('search').value='';el('sort').value='recent';renderList();renderDetail();switchView('notebook');el('saved-label').textContent='已保存 · 本次演示';if(keep){openCapture();el('capture-status').textContent='已保存，可以继续记录。'}else el('capture').hidden=true;
+    };
+    const oldDetail=renderDetail;
+    renderDetail=function(){oldDetail();const w=current();const target=el('detail');const section=document.createElement('section');section.className='mt-7 border-t border-line pt-5 text-sm leading-7';section.innerHTML='<h3 class="text-xs text-muted mb-2">原版记录信息</h3><p>分类：'+escapeHtml(w.category||'其他')+'</p>'+(w.sourceDetail?'<p>来源详情：'+escapeHtml(w.sourceDetail)+'</p>':'')+(w.note?'<p>我的笔记：'+escapeHtml(w.note)+'</p>':'')+(w.mySentence?'<p>我会说：'+escapeHtml(w.mySentence)+'</p>':'');target.appendChild(section)};
+    renderList();switchView('notebook');
+  })();
+</script>
 </body></html>
