@@ -1,0 +1,264 @@
+# Page dependency trees
+
+All local imports are recursively traced below. Data/storage/sync helpers are discovery context; only visual sources are selected for generation. Cycles are marked.
+
+## src/App.tsx
+
+```text
+- src/App.tsx
+  - src/types.ts
+  - src/db/entries.ts
+    - src/types.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+    - src/db/database.ts
+      - src/types.ts
+  - src/lib/lexicon.ts
+    - src/types.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+    - src/db/database.ts
+      - src/types.ts
+  - src/lib/categories.ts
+    - src/db/database.ts
+      - src/types.ts
+    - src/types.ts
+    - src/db/entries.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+  - src/lib/speech.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+  - src/lib/sync.ts
+    - src/types.ts
+    - src/db/entries.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/db/database.ts
+      - src/types.ts
+  - src/components/CaptureModal.tsx
+    - src/types.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+    - src/lib/enrich.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/lib/lexicon.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+      - src/lib/zhGloss.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+    - src/lib/lexicon.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/lib/categories.ts
+      - src/db/database.ts
+        - src/types.ts
+      - src/types.ts
+      - src/db/entries.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+    - src/lib/speech.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+  - src/components/EntryCard.tsx
+    - src/types.ts
+    - src/lib/lexicon.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/lib/enrich.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/lib/lexicon.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+      - src/lib/zhGloss.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+    - src/db/entries.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/lib/speech.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+    - src/lib/categories.ts
+      - src/db/database.ts
+        - src/types.ts
+      - src/types.ts
+      - src/db/entries.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+  - src/components/LibraryView.tsx
+    - src/types.ts
+    - src/lib/lexicon.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+  - src/components/SettingsView.tsx
+    - src/lib/sync.ts
+      - src/types.ts
+      - src/db/entries.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/lib/export.ts
+      - src/db/entries.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+      - src/lib/lexicon.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/types.ts
+    - src/lib/categories.ts
+      - src/db/database.ts
+        - src/types.ts
+      - src/types.ts
+      - src/db/entries.ts
+        - src/types.ts
+        - src/lib/normalize.ts
+          - src/types.ts
+        - src/db/database.ts
+          - src/types.ts
+```
+
+## src/components/LibraryView.tsx
+
+```text
+- src/components/LibraryView.tsx
+  - src/types.ts
+  - src/lib/lexicon.ts
+    - src/types.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+    - src/db/database.ts
+      - src/types.ts
+```
+
+## src/components/SettingsView.tsx
+
+```text
+- src/components/SettingsView.tsx
+  - src/lib/sync.ts
+    - src/types.ts
+    - src/db/entries.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/db/database.ts
+      - src/types.ts
+  - src/lib/export.ts
+    - src/db/entries.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/lib/lexicon.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+    - src/types.ts
+  - src/lib/categories.ts
+    - src/db/database.ts
+      - src/types.ts
+    - src/types.ts
+    - src/db/entries.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+```
+
+## src/components/CaptureModal.tsx
+
+```text
+- src/components/CaptureModal.tsx
+  - src/types.ts
+  - src/lib/normalize.ts
+    - src/types.ts
+  - src/lib/enrich.ts
+    - src/types.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+    - src/lib/lexicon.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+    - src/lib/zhGloss.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+  - src/lib/lexicon.ts
+    - src/types.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+    - src/db/database.ts
+      - src/types.ts
+  - src/lib/categories.ts
+    - src/db/database.ts
+      - src/types.ts
+    - src/types.ts
+    - src/db/entries.ts
+      - src/types.ts
+      - src/lib/normalize.ts
+        - src/types.ts
+      - src/db/database.ts
+        - src/types.ts
+  - src/lib/speech.ts
+    - src/lib/normalize.ts
+      - src/types.ts
+```
+
+Global style: src/index.css; entry mount: src/main.tsx.

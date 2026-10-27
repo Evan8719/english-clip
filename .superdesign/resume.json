@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/": {
+      "targetKind": "existing-ui",
+      "projectId": "cc0b5d0e-ed1a-429b-8527-16e85511b45d",
+      "baselineDraftId": "7fbf8a9f-b9d3-4c53-b5f1-45e205511d45",
+      "baselineVersion": 1,
+      "activeDraftId": "7fbf8a9f-b9d3-4c53-b5f1-45e205511d45",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "docs/DESIGN-BRIEF.md",
+        "src/App.tsx",
+        "src/components/EntryCard.tsx",
+        "src/components/CaptureModal.tsx",
+        "src/components/LibraryView.tsx",
+        "src/components/SettingsView.tsx",
+        "src/index.css",
+        "src/types.ts"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "223d8fc5b7e3feeff0e944f0d57f2af11b939fae4de6e30740d968a2074c54f1",
+        "docs/DESIGN-BRIEF.md": "9319f4ba1aaa8f86120a748e0579873640868ec9f7842913a1483b60fca68a3a",
+        "src/App.tsx": "e982ab2b6cd5d8c0c181072316b92286b0451e42cec1e0a5a6e7915a901fa3b5",
+        "src/components/EntryCard.tsx": "ecf0262db594974a8441b6117809fe53b2e58dbbba4f3276d0b6a8231663b774",
+        "src/components/CaptureModal.tsx": "2e6f5e378febbb419feb80d39bfde64b18417eb1d4a78af5e27600ac386f3cf0",
+        "src/components/LibraryView.tsx": "0168197119eeb7f7c13644150baef6954c80fae20fd1e4a46695cf9e88be2ded",
+        "src/components/SettingsView.tsx": "adbc0f723514d08442af0b3c3b0f44cf58fd4e400544e859a9cb7216d5322277",
+        "src/index.css": "4745db84649a7d0e5f31cd332257b3fabf91017cceeb76d44eef066d47d00998",
+        "src/types.ts": "d33254c5bf36d60b40681d2a32a3d34d0de2388fa8974f4c2e7b1e9a709ae66a"
+      },
+      "referenceIds": [
+        "public-pwa-192.png"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-pwa-192.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/cc0b5d0e-ed1a-429b-8527-16e85511b45d/brand-assets/public-pwa-192.png/pwa-192.png",
+          "sourcePath": "public/pwa-192.png"
+        }
+      },
+      "components": [
+        {
+          "name": "CurrentNavigation",
+          "id": "544b9b89-b2b1-45e0-8316-1021bd3a903e",
+          "sourcePath": "src/App.tsx",
+          "usage": "baseline-only"
+        }
+      ],
+      "drafts": {
+        "7fbf8a9f-b9d3-4c53-b5f1-45e205511d45": {
+          "title": "English Clip 2.0 Desktop",
+          "visualDirection": "用户确认的暖纸色与深绿色；紧凑本子、详情、复习、跟读与带词对话演示",
+          "currentVersion": 4
+        }
+      },
+      "updatedAt": "2026-10-26T08:50:25.499Z"
+    }
+  }
+}

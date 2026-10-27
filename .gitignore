@@ -20,6 +20,7 @@ config.env
 *.key
 *.pem
 work/
+.superdesign/tmp/
 data/store.json*
 data/secret.key
 data/invite-code.txt

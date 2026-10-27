@@ -1,0 +1,618 @@
+# Theme tokens (compact)
+
+- Fonts: IBM Plex Sans / PingFang SC / Noto Sans SC / sans-serif for controls and Chinese; Fraunces / Songti SC / Georgia for headings and English.
+- Paper #f3efe6; pale sage #e7f0ec; ink #1c241f; muted #5d6b63; line #c9d2cb; translucent paper card rgba(255,252,246,.88).
+- Accent #0f6a56; accent text #f4fff9; warning #8a4b2a. Active chip background #dff1ea.
+- Radius 16px; shadow 0 10px 30px rgba(28,36,31,.08).
+- Shell max-width 720px; 20px top, 16px horizontal, 96px bottom. Single-column .stack, gap .75rem. Flip face min-height 140px.
+- Headword 1.65–2.05rem; compact 1.45–1.85rem; line-height 1.45. Pills for buttons.
+- No Tailwind config, no theme provider or dark mode. Source below is authoritative for reproduction.
+
+### src/index.css
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --bg0: #f3efe6;
+  --bg1: #e7f0ec;
+  --ink: #1c241f;
+  --muted: #5d6b63;
+  --line: #c9d2cb;
+  --card: rgba(255, 252, 246, 0.88);
+  --accent: #0f6a56;
+  --accent-ink: #f4fff9;
+  --warn: #8a4b2a;
+  --shadow: 0 10px 30px rgba(28, 36, 31, 0.08);
+  --radius: 16px;
+  font-family: 'IBM Plex Sans', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  color: var(--ink);
+  background: var(--bg0);
+  line-height: 1.45;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #d9ebe3 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #f0e2d0 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg0), var(--bg1));
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 20px 16px 96px;
+}
+
+.page-header h1,
+.brand-mark,
+.modal-header h2,
+.entry-card h3,
+.lemma-word {
+  font-family: Fraunces, 'Songti SC', Georgia, serif;
+}
+
+.brand-mark {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.page-header h1 {
+  margin: 0.2rem 0 0.4rem;
+  font-size: clamp(1.8rem, 4vw, 2.3rem);
+}
+
+.lede {
+  margin: 0;
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.tiny {
+  font-size: 0.85rem;
+}
+
+.section {
+  margin-top: 1.6rem;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.section-head + .stack,
+.section-head + .muted {
+  margin-top: 0;
+}
+
+.collapse-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 48px;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.collapse-toggle__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.collapse-toggle__action {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.capture-btn {
+  margin-top: 1.25rem;
+  width: 100%;
+  min-height: 52px;
+  font-size: 1.1rem;
+}
+
+.primary {
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 0.8rem 1.2rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+.primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.primary.wide {
+  width: 100%;
+  margin-top: 0.8rem;
+}
+
+.ghost {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.35rem 0.5rem;
+}
+
+.ghost.danger {
+  color: var(--warn);
+  margin-top: 0.5rem;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+}
+
+.chip.active {
+  border-color: var(--accent);
+  background: #dff1ea;
+  color: var(--accent);
+}
+
+.entry-card,
+.flip-card,
+.panel,
+.enrich-box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.95rem 1rem;
+  box-shadow: var(--shadow);
+}
+
+.entry-card.compact,
+.flip-card.compact {
+  padding: 0.8rem 0.9rem;
+}
+
+.flip-card {
+  perspective: 1200px;
+}
+
+.flip-inner {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 140px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+}
+
+.flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  grid-area: 1 / 1;
+  border-radius: 12px;
+  padding: 0.2rem 0.05rem 0.1rem;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+.headword {
+  margin: 0;
+  font-family: Fraunces, 'Songti SC', Georgia, serif;
+  font-size: clamp(1.65rem, 5.2vw, 2.05rem);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.flip-card.compact .headword {
+  font-size: clamp(1.45rem, 4.6vw, 1.85rem);
+}
+
+.headword-back {
+  font-size: clamp(1.2rem, 3.8vw, 1.45rem);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.flip-hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.flip-badge {
+  font-size: 0.78rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  background: #dcefe7;
+  color: var(--accent);
+}
+
+.zh-defs {
+  margin-top: 0.55rem;
+}
+
+.zh-def {
+  margin: 0.3rem 0 0;
+  font-size: 1.28rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.card-actions {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+}
+
+.card-action-row {
+  margin-top: 0;
+}
+
+.entry-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.entry-card h3,
+.flip-face h3 {
+  margin: 0;
+  font-size: clamp(1.65rem, 5.2vw, 2.05rem);
+  font-family: Fraunces, 'Songti SC', Georgia, serif;
+  font-weight: 700;
+  line-height: 1.22;
+}
+
+.fam {
+  font-size: 0.78rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  background: #ece7dc;
+  flex-shrink: 0;
+}
+
+.fam-new {
+  background: #f3dfd2;
+  color: var(--warn);
+}
+
+.fam-seen {
+  background: #e7eef5;
+  color: #35506b;
+}
+
+.fam-usable {
+  background: #dcefe7;
+  color: var(--accent);
+}
+
+.phonetic {
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.meta-line,
+.def,
+.example,
+.context,
+.note {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+}
+
+.flip-face .meta-line {
+  margin-top: 0.55rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.example,
+.context {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.review-actions,
+.kind-row,
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.filter-row {
+  margin-top: 0.9rem;
+}
+
+.origin-box {
+  margin: 0.85rem 0;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.origin-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.kind-row.tight {
+  margin-top: 0.35rem;
+}
+
+.field.compact {
+  margin: 0.55rem 0 0;
+}
+
+.more-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.more-block {
+  margin-bottom: 0.35rem;
+}
+
+.sentence-edit {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sentence-edit textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.tabbar {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: min(720px - 24px, calc(100% - 24px));
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.92);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+}
+
+.tab {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.7rem 0.4rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 28, 24, 0.4);
+  display: grid;
+  place-items: end center;
+  padding: 12px;
+  z-index: 20;
+}
+
+.modal {
+  width: min(720px, 100%);
+  max-height: min(92vh, 860px);
+  overflow: auto;
+  background: #fffdf8;
+  border-radius: 20px 20px 16px 16px;
+  padding: 1rem 1rem 1.2rem;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.field span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.field input,
+.field textarea,
+.auth-fields input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.enrich-title {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.lemma-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.lemma-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+
+.panel {
+  margin-top: 1rem;
+}
+
+.panel h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.auth-fields {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.status {
+  margin-top: 0.7rem;
+  color: var(--accent);
+}
+
+code {
+  font-size: 0.85em;
+  background: #ece7dc;
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+}
+
+@media (min-width: 720px) {
+  .modal-backdrop {
+    place-items: center;
+  }
+
+  .modal {
+    border-radius: 20px;
+  }
+}
+
+```
