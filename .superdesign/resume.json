@@ -20,8 +20,8 @@
         "src/types.ts"
       ],
       "fingerprints": {
-        ".superdesign/design-system.md": "223d8fc5b7e3feeff0e944f0d57f2af11b939fae4de6e30740d968a2074c54f1",
-        "docs/DESIGN-BRIEF.md": "9319f4ba1aaa8f86120a748e0579873640868ec9f7842913a1483b60fca68a3a",
+        ".superdesign/design-system.md": "4fade5e2a4384a949c9cc7cd4ceee83a62fcad991e36e18d5cb7b11868be2c52",
+        "docs/DESIGN-BRIEF.md": "90a2c1d92b07a90566b39b5e7be825c2671e355e688d086ee3f9b36f2dc15114",
         "src/App.tsx": "e982ab2b6cd5d8c0c181072316b92286b0451e42cec1e0a5a6e7915a901fa3b5",
         "src/components/EntryCard.tsx": "ecf0262db594974a8441b6117809fe53b2e58dbbba4f3276d0b6a8231663b774",
         "src/components/CaptureModal.tsx": "2e6f5e378febbb419feb80d39bfde64b18417eb1d4a78af5e27600ac386f3cf0",
@@ -50,12 +50,12 @@
       ],
       "drafts": {
         "7fbf8a9f-b9d3-4c53-b5f1-45e205511d45": {
-          "title": "English Clip 2.0 Desktop",
-          "visualDirection": "用户确认的暖纸色与深绿色；紧凑本子、详情、复习、跟读与带词对话演示",
-          "currentVersion": 4
+          "title": "English Clip - 素材库",
+          "visualDirection": "暖纸色与深绿色；本子内词句/素材二级切换，素材原文、区间循环及收藏关联演示",
+          "currentVersion": 7
         }
       },
-      "updatedAt": "2026-10-26T08:50:25.499Z"
+      "updatedAt": "2026-10-26T09:19:09.588Z"
     }
   }
 }
