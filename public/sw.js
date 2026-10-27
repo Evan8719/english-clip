@@ -1,5 +1,5 @@
 /* English Clip — lightweight offline shell + lexicon cache */
-const VERSION = 'english-clip-v9'
+const VERSION = 'english-clip-v10'
 const SHELL = [
   '/',
   '/index.html',
