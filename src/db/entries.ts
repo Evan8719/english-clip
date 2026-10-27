@@ -40,6 +40,10 @@ export interface CreateEntryInput {
   kind?: Entry['kind']
   context?: string
   note?: string
+  category?: string
+  source?: string
+  sourceDetail?: string
+  mySentence?: string
   tags?: string[]
   enrichment?: Entry['enrichment']
   familiarity?: Familiarity
@@ -53,6 +57,10 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     kind: input.kind ?? detectKind(input.text),
     context: input.context?.trim() || undefined,
     note: input.note?.trim() || undefined,
+    category: input.category?.trim() || '其他',
+    source: input.source?.trim() || undefined,
+    sourceDetail: input.sourceDetail?.trim() || undefined,
+    mySentence: input.mySentence?.trim() || undefined,
     tags: input.tags ?? [],
     familiarity: input.familiarity ?? 'new',
     enrichment: input.enrichment,
@@ -61,6 +69,31 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     lastReviewedAt: undefined,
   }
   return putEntry(entry)
+}
+
+/** Pick up to `limit` stale cards for casual daily flip (stable within the local day). */
+export function pickDailyFlip(entries: Entry[], limit = 5): Entry[] {
+  if (entries.length === 0) return []
+  const dayKey = new Date().toISOString().slice(0, 10)
+  const scored = [...entries].sort((a, b) => {
+    const aTime = a.lastReviewedAt ?? a.createdAt
+    const bTime = b.lastReviewedAt ?? b.createdAt
+    return aTime.localeCompare(bTime)
+  })
+  // Deterministic shuffle-ish order by day + id so the set is stable today.
+  const ranked = scored
+    .map((e) => ({
+      e,
+      rank: hashStr(`${dayKey}:${e.id}`),
+    }))
+    .sort((a, b) => a.rank - b.rank)
+  return ranked.slice(0, Math.min(limit, ranked.length)).map((x) => x.e)
+}
+
+function hashStr(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return h
 }
 
 export async function updateEntry(

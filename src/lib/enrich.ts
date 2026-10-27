@@ -1,9 +1,11 @@
 import type { Enrichment, FrequencyBand, Lemma } from '../types'
 import { createId, normalizeHeadword } from './normalize'
 import { cacheLemma, getLemma, lemmaToEnrichment } from './lexicon'
+import { fetchZhOnline, lookupZhGloss, splitZhGloss } from './zhGloss'
 
 interface FreeDictionaryPhonetic {
   text?: string
+  audio?: string
 }
 
 interface FreeDictionaryMeaning {
@@ -22,23 +24,67 @@ function bandFromOnline(): FrequencyBand {
   return 4
 }
 
+async function attachZh(text: string, enrichment: Enrichment): Promise<Enrichment> {
+  if (enrichment.definitionsZh?.length) return enrichment
+
+  const localZh = await lookupZhGloss(text)
+  if (localZh) {
+    return { ...enrichment, definitionsZh: splitZhGloss(localZh) }
+  }
+
+  const onlineZh = await fetchZhOnline(text)
+  if (onlineZh) {
+    return { ...enrichment, definitionsZh: splitZhGloss(onlineZh) }
+  }
+
+  return enrichment
+}
+
 export async function enrichText(text: string): Promise<Enrichment | undefined> {
   const local = await getLemma(text)
-  if (local && (local.definitions.length > 0 || local.phonetic || local.frequencyBand)) {
-    return lemmaToEnrichment(local)
+  if (local && (local.definitions.length > 0 || local.phonetic || local.frequencyBand || local.definitionsZh?.length)) {
+    return attachZh(text, lemmaToEnrichment(local))
   }
 
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    return local ? lemmaToEnrichment(local) : undefined
+    if (!local) {
+      const onlyZh = await lookupZhGloss(text)
+      if (!onlyZh) return undefined
+      return {
+        definitions: [],
+        definitionsZh: splitZhGloss(onlyZh),
+        examples: [],
+        provider: 'local',
+      }
+    }
+    return attachZh(text, lemmaToEnrichment(local))
   }
 
   const online = await fetchFreeDictionary(text)
   if (!online) {
-    return local ? lemmaToEnrichment(local) : undefined
+    if (local) return attachZh(text, lemmaToEnrichment(local))
+    const onlyZh = await attachZh(text, { definitions: [], examples: [], provider: 'manual' })
+    return onlyZh.definitionsZh?.length ? onlyZh : undefined
   }
 
   await cacheLemma(online)
-  return lemmaToEnrichment(online)
+  return attachZh(text, lemmaToEnrichment(online))
+}
+
+/** Resolve Chinese gloss for an existing entry (e.g. on card flip). */
+export async function ensureZhEnrichment(
+  text: string,
+  enrichment?: Enrichment,
+): Promise<Enrichment | undefined> {
+  const base =
+    enrichment ??
+    ({
+      definitions: [],
+      examples: [],
+      provider: 'manual' as const,
+    } satisfies Enrichment)
+
+  return attachZh(text, base)
 }
 
 async function fetchFreeDictionary(text: string): Promise<Lemma | undefined> {
@@ -57,6 +103,11 @@ async function fetchFreeDictionary(text: string): Promise<Lemma | undefined> {
     const phonetic =
       first.phonetic ||
       first.phonetics?.find((p) => p.text)?.text ||
+      undefined
+
+    const audioUrl =
+      first.phonetics?.find((p) => p.audio && /us/i.test(p.audio))?.audio ||
+      first.phonetics?.find((p) => p.audio)?.audio ||
       undefined
 
     const definitions: string[] = []
@@ -79,6 +130,7 @@ async function fetchFreeDictionary(text: string): Promise<Lemma | undefined> {
       id: createId(),
       headword: word,
       phonetic,
+      audioUrl,
       definitions,
       examples,
       frequencyBand: bandFromOnline(),

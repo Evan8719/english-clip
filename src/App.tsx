@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Entry, Lemma, TabId } from './types'
 import {
   createEntry,
   getRecentEntries,
   getStaleEntries,
   listEntries,
+  pickDailyFlip,
   reviewEntry,
   softDeleteEntry,
+  updateEntry,
 } from './db/entries'
 import { ensureLexiconLoaded, lemmaToEnrichment } from './lib/lexicon'
+import {
+  categoriesForFilter,
+  listCategories,
+  listSources,
+  migrateLegacyEntryCategories,
+  normalizeCategory,
+} from './lib/categories'
+import { warmSpeechVoices } from './lib/speech'
 import { getCurrentUser, isSyncConfigured, scheduleSilentSync, syncNow } from './lib/sync'
 import { CaptureModal } from './components/CaptureModal'
 import { EntryCard } from './components/EntryCard'
@@ -20,20 +30,27 @@ export default function App() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [captureOpen, setCaptureOpen] = useState(false)
   const [captureSeed, setCaptureSeed] = useState('')
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
   const [lexiconReady, setLexiconReady] = useState(false)
   const [lexiconError, setLexiconError] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
+  const [filterCategory, setFilterCategory] = useState<string>('全部')
+  const [filterSource, setFilterSource] = useState<string>('全部来源')
+  const [recentExpanded, setRecentExpanded] = useState(false)
 
   const refresh = useCallback(async () => {
+    await migrateLegacyEntryCategories()
     setEntries(await listEntries())
+    setCategories(await listCategories())
   }, [])
 
   useEffect(() => {
+    warmSpeechVoices()
     void refresh()
     void ensureLexiconLoaded()
       .then(() => setLexiconReady(true))
       .catch((e: Error) => setLexiconError(e.message))
 
-    // Phone PWA + Mac app: pull/push cloud copy when already logged in.
     if (isSyncConfigured()) {
       void getCurrentUser().then((user) => {
         if (!user) return
@@ -42,13 +59,47 @@ export default function App() {
     }
   }, [refresh])
 
-  const recent = getRecentEntries(entries, 12)
-  const stale = getStaleEntries(entries, 8)
+  const filterCategories = useMemo(
+    () => categoriesForFilter(categories, entries),
+    [categories, entries],
+  )
+
+  const sources = useMemo(() => {
+    if (filterCategory === '全部') return []
+    return listSources(entries, filterCategory)
+  }, [entries, filterCategory])
+
+  const filtered = useMemo(() => {
+    return entries.filter((e) => {
+      const cat = normalizeCategory(e.category)
+      const catOk = filterCategory === '全部' || cat === filterCategory
+      const srcOk =
+        filterSource === '全部来源' || (e.source || '') === filterSource
+      return catOk && srcOk
+    })
+  }, [entries, filterCategory, filterSource])
+
+  const dailyFlip = useMemo(() => pickDailyFlip(filtered, 5), [filtered])
+  const recent = getRecentEntries(filtered, 12)
+  const stale = getStaleEntries(filtered, 8)
+
+  function openCreate(seed = '') {
+    setEditingEntry(null)
+    setCaptureSeed(seed)
+    setCaptureOpen(true)
+  }
+
+  function openEdit(entry: Entry) {
+    setEditingEntry(entry)
+    setCaptureSeed('')
+    setCaptureOpen(true)
+  }
 
   async function handleCollect(lemma: Lemma) {
     await createEntry({
       text: lemma.headword,
       kind: lemma.headword.includes(' ') ? 'phrase' : 'word',
+      category: '其他',
       enrichment: lemmaToEnrichment(lemma),
     })
     await refresh()
@@ -70,10 +121,7 @@ export default function App() {
             <button
               type="button"
               className="primary capture-btn"
-              onClick={() => {
-                setCaptureSeed('')
-                setCaptureOpen(true)
-              }}
+              onClick={() => openCreate()}
             >
               + 记录
             </button>
@@ -86,16 +134,68 @@ export default function App() {
                   : '词库加载中…'}
             </p>
 
+            <div className="kind-row filter-row">
+              <button
+                type="button"
+                className={filterCategory === '全部' ? 'chip active' : 'chip'}
+                onClick={() => {
+                  setFilterCategory('全部')
+                  setFilterSource('全部来源')
+                }}
+              >
+                全部
+              </button>
+              {filterCategories.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={filterCategory === c ? 'chip active' : 'chip'}
+                  onClick={() => {
+                    setFilterCategory(c)
+                    setFilterSource('全部来源')
+                  }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {filterCategory !== '全部' && sources.length > 0 && (
+              <div className="kind-row filter-row">
+                <button
+                  type="button"
+                  className={filterSource === '全部来源' ? 'chip active' : 'chip'}
+                  onClick={() => setFilterSource('全部来源')}
+                >
+                  全部来源
+                </button>
+                {sources.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={filterSource === s ? 'chip active' : 'chip'}
+                    title={s}
+                    onClick={() => setFilterSource(s)}
+                  >
+                    {s.length > 18 ? `${s.slice(0, 18)}…` : s}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <section className="section">
-              <h2>许久未见</h2>
-              {stale.length === 0 ? (
-                <p className="muted">还没有可复习的条目。先记几个词吧。</p>
+              <h2>今日随手翻</h2>
+              <p className="muted tiny">今天固定这几张，点开翻一翻就行，没有打卡。</p>
+              {dailyFlip.length === 0 ? (
+                <p className="muted">还没有条目。先记几个词吧。</p>
               ) : (
                 <div className="stack">
-                  {stale.map((entry) => (
+                  {dailyFlip.map((entry) => (
                     <EntryCard
-                      key={entry.id}
+                      key={`daily-${entry.id}`}
                       entry={entry}
+                      onEdit={() => openEdit(entry)}
+                      onUpdated={() => void refresh()}
                       onReview={(familiarity) => {
                         void reviewEntry(entry.id, familiarity).then(() => {
                           void refresh()
@@ -109,16 +209,55 @@ export default function App() {
             </section>
 
             <section className="section">
-              <h2>最近收录</h2>
+              <h2>许久未见</h2>
+              {stale.length === 0 ? (
+                <p className="muted">还没有可复习的条目。</p>
+              ) : (
+                <div className="stack">
+                  {stale.map((entry) => (
+                    <EntryCard
+                      key={entry.id}
+                      entry={entry}
+                      onEdit={() => openEdit(entry)}
+                      onUpdated={() => void refresh()}
+                      onReview={(familiarity) => {
+                        void reviewEntry(entry.id, familiarity).then(() => {
+                          void refresh()
+                          scheduleSilentSync()
+                        })
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="section">
+              <button
+                type="button"
+                className="collapse-toggle"
+                aria-expanded={recentExpanded}
+                onClick={() => setRecentExpanded((v) => !v)}
+              >
+                <span className="collapse-toggle__title">
+                  最近收录
+                  {recent.length > 0 ? ` · ${recent.length}` : ''}
+                </span>
+                <span className="collapse-toggle__action">
+                  {recent.length === 0 ? '' : recentExpanded ? '收起 ▲' : '展开 ▼'}
+                </span>
+              </button>
               {recent.length === 0 ? (
                 <p className="muted">空空如也。看到好词就记下来。</p>
-              ) : (
+              ) : recentExpanded ? (
                 <div className="stack">
                   {recent.map((entry) => (
                     <EntryCard
                       key={`recent-${entry.id}`}
                       entry={entry}
                       compact
+                      onEdit={() => openEdit(entry)}
+                      onUpdated={() => void refresh()}
                       onDelete={() => {
                         void softDeleteEntry(entry.id).then(() => {
                           void refresh()
@@ -134,6 +273,8 @@ export default function App() {
                     />
                   ))}
                 </div>
+              ) : (
+                <p className="muted tiny">已折叠，点上方展开查看。</p>
               )}
             </section>
           </div>
@@ -169,10 +310,29 @@ export default function App() {
 
       <CaptureModal
         open={captureOpen}
+        entry={editingEntry}
         initialText={captureSeed}
-        onClose={() => setCaptureOpen(false)}
+        entries={entries}
+        onClose={() => {
+          setCaptureOpen(false)
+          setEditingEntry(null)
+        }}
         onSave={async (input) => {
-          await createEntry(input)
+          if (editingEntry) {
+            await updateEntry(editingEntry.id, {
+              text: input.text,
+              kind: input.kind,
+              context: input.context,
+              note: input.note,
+              category: input.category,
+              source: input.source,
+              sourceDetail: input.sourceDetail,
+              mySentence: input.mySentence,
+              enrichment: input.enrichment,
+            })
+          } else {
+            await createEntry(input)
+          }
           await refresh()
           scheduleSilentSync()
         }}

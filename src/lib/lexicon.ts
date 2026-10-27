@@ -90,7 +90,9 @@ export function lemmaToEnrichment(lemma: Lemma) {
   return {
     lemmaId: lemma.id,
     phonetic: lemma.phonetic,
+    audioUrl: lemma.audioUrl,
     definitions: lemma.definitions,
+    definitionsZh: lemma.definitionsZh,
     examples: lemma.examples,
     frequencyBand: lemma.frequencyBand,
     cefrBand: lemma.cefrBand,

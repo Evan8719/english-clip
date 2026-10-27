@@ -95,9 +95,57 @@ button {
   margin-top: 1.6rem;
 }
 
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
 .section h2 {
   margin: 0 0 0.75rem;
   font-size: 1.05rem;
+}
+
+.section-head + .stack,
+.section-head + .muted {
+  margin-top: 0;
+}
+
+.collapse-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 48px;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.collapse-toggle__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.collapse-toggle__action {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
 .stack {
@@ -159,6 +207,7 @@ button {
 }
 
 .entry-card,
+.flip-card,
 .panel,
 .enrich-box {
   background: var(--card);
@@ -168,8 +217,101 @@ button {
   box-shadow: var(--shadow);
 }
 
-.entry-card.compact {
+.entry-card.compact,
+.flip-card.compact {
   padding: 0.8rem 0.9rem;
+}
+
+.flip-card {
+  perspective: 1200px;
+}
+
+.flip-inner {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 140px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+}
+
+.flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  grid-area: 1 / 1;
+  border-radius: 12px;
+  padding: 0.2rem 0.05rem 0.1rem;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+.headword {
+  margin: 0;
+  font-family: Fraunces, 'Songti SC', Georgia, serif;
+  font-size: clamp(1.65rem, 5.2vw, 2.05rem);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.flip-card.compact .headword {
+  font-size: clamp(1.45rem, 4.6vw, 1.85rem);
+}
+
+.headword-back {
+  font-size: clamp(1.2rem, 3.8vw, 1.45rem);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.flip-hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.flip-badge {
+  font-size: 0.78rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  background: #dcefe7;
+  color: var(--accent);
+}
+
+.zh-defs {
+  margin-top: 0.55rem;
+}
+
+.zh-def {
+  margin: 0.3rem 0 0;
+  font-size: 1.28rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.card-actions {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+}
+
+.card-action-row {
+  margin-top: 0;
 }
 
 .entry-top {
@@ -179,9 +321,13 @@ button {
   align-items: baseline;
 }
 
-.entry-card h3 {
+.entry-card h3,
+.flip-face h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: clamp(1.65rem, 5.2vw, 2.05rem);
+  font-family: Fraunces, 'Songti SC', Georgia, serif;
+  font-weight: 700;
+  line-height: 1.22;
 }
 
 .fam {
@@ -189,6 +335,7 @@ button {
   border-radius: 999px;
   padding: 0.15rem 0.5rem;
   background: #ece7dc;
+  flex-shrink: 0;
 }
 
 .fam-new {
@@ -207,7 +354,8 @@ button {
 }
 
 .phonetic {
-  margin: 0.25rem 0;
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
   color: var(--muted);
 }
 
@@ -218,6 +366,13 @@ button {
 .note {
   margin: 0.35rem 0 0;
   font-size: 0.95rem;
+}
+
+.flip-face .meta-line {
+  margin-top: 0.55rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 .example,
@@ -233,6 +388,69 @@ button {
   flex-wrap: wrap;
   gap: 0.45rem;
   margin-top: 0.7rem;
+}
+
+.filter-row {
+  margin-top: 0.9rem;
+}
+
+.origin-box {
+  margin: 0.85rem 0;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.origin-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.kind-row.tight {
+  margin-top: 0.35rem;
+}
+
+.field.compact {
+  margin: 0.55rem 0 0;
+}
+
+.more-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.more-block {
+  margin-bottom: 0.35rem;
+}
+
+.sentence-edit {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sentence-edit textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.row input {
+  flex: 1;
+  min-width: 0;
 }
 
 .tabbar {
