@@ -646,3 +646,143 @@ code {
     border-radius: 20px;
   }
 }
+
+/* Notebook home: two compact columns with the original flip-card behavior. */
+.home-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.home-header > div { min-width: 0; flex: 1; }
+
+.home-capture {
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.home-controls {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 1rem -16px 0;
+  padding: 0.65rem 16px 0.75rem;
+  background: rgba(243, 239, 230, 0.96);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+
+.home-control-main {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.home-control-main .chip {
+  white-space: nowrap;
+  min-height: 42px;
+  font-weight: 600;
+}
+
+.home-search {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem;
+  color: var(--ink);
+  background: #fffdf8;
+}
+
+.home-category-scroll {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-category-scroll::-webkit-scrollbar { display: none; }
+
+.home-category-scroll .chip {
+  flex: none;
+  white-space: nowrap;
+}
+
+.home-adjust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+.home-adjust label {
+  display: grid;
+  flex: 1 1 130px;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.home-adjust select {
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.4rem;
+  background: #fffdf8;
+  color: var(--ink);
+}
+
+.home-source-select { flex-basis: 100% !important; }
+
+.home-list-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin: 1rem 0 0.7rem;
+}
+
+.home-list-head h2 { margin: 0; font-size: 1.05rem; }
+.home-list-head p { margin: 0.2rem 0 0; }
+.home-empty { margin-top: 0.5rem; }
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.home-grid.single { grid-template-columns: minmax(0, 1fr); }
+.home-grid-item { min-width: 0; }
+.home-grid-item.sentence { grid-column: 1 / -1; }
+.home-grid .flip-card { min-width: 0; padding: 0.8rem; }
+.home-grid .headword { font-size: clamp(1.25rem, 4.3vw, 1.7rem); }
+.home-grid .flip-card .flip-inner { min-height: 126px; }
+.home-grid .flip-face .meta-line { font-size: 0.74rem; }
+.home-grid .card-action-row { gap: 0.3rem; }
+.home-grid .card-action-row .chip { padding: 0.3rem 0.5rem; font-size: 0.78rem; }
+.home-grid .zh-def { font-size: 1.05rem; }
+.home-grid .note, .home-grid .example { overflow-wrap: anywhere; }
+.home-grid.single .headword, .home-grid-item.sentence .headword { font-size: clamp(1.55rem, 5vw, 2rem); }
+
+.review-session { max-width: 540px; margin: 1.5rem auto 0; }
+.review-progress { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.65rem; color: var(--muted); font-size: 0.85rem; }
+.review-session .flip-card { padding: 1.25rem; }
+.review-session .flip-inner { min-height: 190px; }
+.review-context { color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
+.review-mark { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; margin-top: 1.25rem; }
+.review-mark .chip { min-height: 46px; font-weight: 600; }
+.review-skip { display: block; margin: 0.8rem auto; }
+.review-finished { text-align: center; padding: 2rem 1rem; }
+.review-finished .ghost { margin-left: 0.5rem; }
+
+@media (max-width: 430px) {
+  .home-header { align-items: start; }
+  .home-header .lede { max-width: 215px; font-size: 0.9rem; }
+  .home-capture { padding: 0.7rem 0.9rem; }
+}

@@ -56,7 +56,7 @@ export function SettingsView() {
         <h2>云同步与备份</h2>
         {!configured ? (
           <p className="muted">
-            云端尚未接入。按引导配置 Supabase + Vercel 后，手机与 Mac App 可共用同一本词库。
+            当前设备暂时无法连接 NAS 同步服务。本地记录仍可正常使用；恢复连接后再登录同步。
           </p>
         ) : (
           <>
