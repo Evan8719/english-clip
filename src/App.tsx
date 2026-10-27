@@ -75,7 +75,6 @@ export default function App() {
           <HomeView
             entries={entries}
             categories={categories}
-            onCreate={() => openCreate()}
             onEdit={openEdit}
             onUpdated={() => void refresh()}
             onDelete={handleDelete}
@@ -98,6 +97,7 @@ export default function App() {
       <nav className="tabbar" aria-label="主导航">
         <button type="button" className={tab === 'home' ? 'tab active' : 'tab'} onClick={() => setTab('home')}>首页</button>
         <button type="button" className={tab === 'review' ? 'tab active' : 'tab'} onClick={() => setTab('review')}>复习</button>
+        <button type="button" className="tab tab-capture" aria-label="记录新词句" onClick={() => openCreate()}>+</button>
         <button type="button" className={tab === 'materials' ? 'tab active' : 'tab'} onClick={() => setTab('materials')}>素材</button>
         <button type="button" className={tab === 'settings' ? 'tab active' : 'tab'} onClick={() => setTab('settings')}>设置</button>
       </nav>
