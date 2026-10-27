@@ -1,0 +1,20 @@
+{
+  "id": "english-clip-starter-20261026",
+  "title": "第一批：日常表达与兴趣话题",
+  "provider": "ELLLO",
+  "permissionEvidence": [
+    "https://www.elllo.org/english/Mixers/?D=A",
+    "https://www.manythings.org/elllo/about.html"
+  ],
+  "usage": "教育学习、非商业使用；保留 ELLLO、说话人及原课来源。未确认具体 CC 版本，不自行标注 CC BY 或商业授权。",
+  "lessons": [
+    {"slug":"camera","index":40,"titleZh":"聊聊摄影与相机","topic":"摄影","focus":["take photos of","Do you mind …?","a couple"],"retell":"说说 Trevor 喜欢拍什么，以及你自己更喜欢拍人物还是风景。"},
+    {"slug":"favorite-place","index":42,"titleZh":"介绍喜欢的地方","topic":"旅行","focus":["Where do you want to go?","how long would it take","I prefer the beach"],"retell":"用自己的话介绍音频里的地方，再介绍一个你喜欢去的地方。"},
+    {"slug":"weekend-getaway","index":55,"titleZh":"计划一次周末出行","topic":"旅行","focus":["this weekend","meet my friend","going to"],"retell":"用三句话复述出行计划，再说说你下个周末打算做什么。"},
+    {"slug":"reading","index":22,"titleZh":"聊聊阅读习惯","topic":"日常","focus":["at least one a week","I enjoy reading","on the trains"],"retell":"说说说话人的阅读喜好，再介绍一本自己喜欢的书。"},
+    {"slug":"music","index":54,"titleZh":"表达音乐喜好","topic":"兴趣","focus":["my favorite music","grew up listening to","I'd like to go"],"retell":"复述说话人的音乐偏好，再介绍你喜欢的音乐或电影配乐。"},
+    {"slug":"driving","index":28,"titleZh":"谈驾驶经历","topic":"出行","focus":["driver's license","how long have you had","driving test"],"retell":"用英文说说自己学开车的经历，或者一次难忘的自驾旅行。"},
+    {"slug":"weather","index":20,"titleZh":"聊天气与季节","topic":"日常","focus":["favorite season","rainy season","What's the weather like today?"],"retell":"介绍音频里的天气，再比较自己住的城市和喜欢旅行的地方。"},
+    {"slug":"recipe","index":50,"titleZh":"介绍一道简单食物","topic":"日常","focus":["comes to mind","good to go","give that a try"],"retell":"按先后顺序复述做法，再介绍一道自己会做的食物。"}
+  ]
+}

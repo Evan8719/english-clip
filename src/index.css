@@ -460,7 +460,7 @@ button {
   transform: translateX(-50%);
   width: min(720px - 24px, calc(100% - 24px));
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.35rem;
   padding: 0.4rem;
   border-radius: 999px;
@@ -468,6 +468,51 @@ button {
   border: 1px solid var(--line);
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow);
+}
+
+.material-pack {
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+.material-pack__cover {
+  margin: -0.95rem -1rem 1rem;
+  padding: 1.2rem 1rem;
+  background: linear-gradient(135deg, #e3ebe3, #f3e8dc);
+  border-bottom: 1px solid var(--line);
+}
+
+.material-pack__cover p,
+.material-pack__cover h2 {
+  margin: 0;
+}
+
+.material-pack__cover h2 {
+  margin-top: 0.25rem;
+  font-family: Fraunces, 'Songti SC', Georgia, serif;
+  font-size: 1.35rem;
+}
+
+.material-pack__meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.8rem 0;
+}
+
+.material-pack__topics {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+.material-pack__action {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  text-align: center;
+  text-decoration: none;
 }
 
 .tab {
