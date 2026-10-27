@@ -6,20 +6,18 @@ import { EntryCard } from './EntryCard'
 interface Props {
   entries: Entry[]
   categories: string[]
-  onCreate: () => void
   onEdit: (entry: Entry) => void
   onUpdated: () => void
   onDelete: (entry: Entry) => void
   lexiconStatus: string
 }
 
-export function HomeView({ entries, categories, onCreate, onEdit, onUpdated, onDelete, lexiconStatus }: Props) {
+export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus }: Props) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
   const [source, setSource] = useState('全部来源')
   const [kind, setKind] = useState<EntryKind | 'all'>('all')
   const [order, setOrder] = useState<'recent' | 'alphabetical'>('recent')
-  const [grid, setGrid] = useState(true)
   const [adjustOpen, setAdjustOpen] = useState(false)
 
   const categoriesShown = useMemo(() => categoriesForFilter(categories, entries), [categories, entries])
@@ -43,18 +41,14 @@ export function HomeView({ entries, categories, onCreate, onEdit, onUpdated, onD
   return (
     <div className="page">
       <header className="page-header brand home-header">
-        <div>
-          <p className="brand-mark">English Clip</p>
-          <h1>英语剪贴本</h1>
-          <p className="lede">记下有用的词，想起来再翻。无催促。</p>
-        </div>
-        <button type="button" className="primary home-capture" onClick={onCreate}>＋ 记录</button>
+        <p className="brand-mark">English Clip</p>
+        <h1>英语剪贴本</h1>
+        <p className="lede">记下有用的词，想起来再翻。无催促。</p>
       </header>
 
       <div className="home-controls">
         <div className="home-control-main">
           <input className="home-search" type="search" aria-label="搜索已记录的词句" placeholder="搜索词句、来源或笔记" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <button type="button" className="chip" onClick={() => setGrid((value) => !value)}>{grid ? '双列' : '单列'}</button>
           <button type="button" className={adjustOpen ? 'chip active' : 'chip'} aria-expanded={adjustOpen} aria-controls="home-adjust" onClick={() => setAdjustOpen((value) => !value)}>调整</button>
         </div>
         <div className="home-category-scroll" aria-label="按来源类型筛选">
@@ -79,9 +73,9 @@ export function HomeView({ entries, categories, onCreate, onEdit, onUpdated, onD
         {lexiconStatus && <span className="muted tiny">{lexiconStatus}</span>}
       </div>
       {filtered.length === 0 ? <div className="home-empty panel">
-        <p>{entries.length ? '没有找到符合条件的词句。' : '本子里还没有词句。看到想记的表达，就点「记录」。'}</p>
+        <p>{entries.length ? '没有找到符合条件的词句。' : '本子里还没有词句。看到想记的表达，就点底栏的「＋」。'}</p>
         {entries.length > 0 && <button type="button" className="chip" onClick={() => { setQuery(''); setCategory('全部'); setSource('全部来源'); setKind('all') }}>清除筛选</button>}
-      </div> : <div className={grid ? 'home-grid' : 'home-grid single'}>
+      </div> : <div className="home-grid">
         {filtered.map((entry) => <div key={entry.id} className={entry.kind === 'sentence' ? 'home-grid-item sentence' : 'home-grid-item'}>
           <EntryCard key={entry.updatedAt} entry={entry} compact onEdit={() => onEdit(entry)} onUpdated={onUpdated} onDelete={() => onDelete(entry)} />
         </div>)}

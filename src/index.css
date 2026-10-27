@@ -52,7 +52,7 @@ button {
   max-width: 720px;
   margin: 0 auto;
   min-height: 100vh;
-  padding: 20px 16px 96px;
+  padding: 20px 16px calc(88px + env(safe-area-inset-bottom));
 }
 
 .page-header h1,
@@ -454,18 +454,21 @@ button {
 .tabbar {
   position: fixed;
   left: 50%;
-  bottom: 12px;
+  bottom: 0;
   transform: translateX(-50%);
-  width: min(720px - 24px, calc(100% - 24px));
+  width: min(720px, 100%);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.35rem;
-  padding: 0.4rem;
-  border-radius: 999px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.45rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
+  border-radius: 16px 16px 0 0;
   background: rgba(255, 252, 246, 0.92);
   border: 1px solid var(--line);
+  border-bottom: none;
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow);
+  z-index: 15;
 }
 
 .material-pack {
@@ -520,6 +523,23 @@ button {
   padding: 0.7rem 0.4rem;
   color: var(--muted);
   font-weight: 500;
+  min-height: 44px;
+}
+
+.tab-capture {
+  justify-self: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+  transform: translateY(-5px);
+  box-shadow: 0 5px 14px rgba(15, 106, 86, 0.22);
 }
 
 .tab.active {
@@ -645,19 +665,15 @@ code {
   }
 }
 
-/* Notebook home: two compact columns with the original flip-card behavior. */
+/* Notebook home: compact single-column cards keep full-width sentences readable. */
 .home-header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
+  display: block;
 }
 
-.home-header > div { min-width: 0; flex: 1; }
-
-.home-capture {
-  white-space: nowrap;
-  min-height: 44px;
+.home-header h1 {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
 }
 
 .home-controls {
@@ -750,23 +766,83 @@ code {
 
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.55rem;
   align-items: start;
 }
 
-.home-grid.single { grid-template-columns: minmax(0, 1fr); }
 .home-grid-item { min-width: 0; }
-.home-grid-item.sentence { grid-column: 1 / -1; }
-.home-grid .flip-card { min-width: 0; padding: 0.8rem; }
-.home-grid .headword { font-size: clamp(1.25rem, 4.3vw, 1.7rem); }
-.home-grid .flip-card .flip-inner { min-height: 126px; }
-.home-grid .flip-face .meta-line { font-size: 0.74rem; }
-.home-grid .card-action-row { gap: 0.3rem; }
-.home-grid .card-action-row .chip { padding: 0.3rem 0.5rem; font-size: 0.78rem; }
+.home-grid .flip-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 31%);
+  align-items: stretch;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.75rem 0.8rem;
+}
+.home-grid .flip-inner { min-height: 70px; align-self: start; }
+.home-grid .flip-inner:not(.flipped) .flip-back,
+.home-grid .flip-inner.flipped .flip-front { position: absolute; inset: 0; }
+.home-grid .headword { font-size: clamp(1.4rem, 4.7vw, 1.8rem); }
+.home-grid .flip-hint { margin-top: 0.45rem; }
+.home-grid .card-context-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.home-grid .card-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.45rem 0 0;
+  border-top: 1px solid var(--line);
+}
+.card-side-meta {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  min-width: 0;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--line);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.card-side-source, .card-side-detail { overflow-wrap: anywhere; }
+.card-side-source { color: var(--ink); font-weight: 600; }
+.card-side-detail { color: var(--muted); }
+.card-side-state { color: var(--accent); }
+.home-grid .card-action-row {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+}
+.home-grid .card-action-row .chip {
+  min-height: 28px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+.home-grid .ghost.danger { margin: 0; padding: 0.2rem 0; font-size: 0.72rem; }
 .home-grid .zh-def { font-size: 1.05rem; }
 .home-grid .note, .home-grid .example { overflow-wrap: anywhere; }
-.home-grid.single .headword, .home-grid-item.sentence .headword { font-size: clamp(1.55rem, 5vw, 2rem); }
+.home-grid-item.sentence .flip-card { grid-template-columns: minmax(0, 1fr); }
+.home-grid-item.sentence .card-side-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.55rem;
+  padding: 0;
+  border-left: none;
+}
 
 .review-session { max-width: 540px; margin: 1.5rem auto 0; }
 .review-progress { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.65rem; color: var(--muted); font-size: 0.85rem; }
@@ -780,7 +856,5 @@ code {
 .review-finished .ghost { margin-left: 0.5rem; }
 
 @media (max-width: 430px) {
-  .home-header { align-items: start; }
-  .home-header .lede { max-width: 215px; font-size: 0.9rem; }
-  .home-capture { padding: 0.7rem 0.9rem; }
+  .home-header .lede { font-size: 0.9rem; }
 }
