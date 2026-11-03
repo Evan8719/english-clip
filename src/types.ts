@@ -59,4 +59,4 @@ export interface LexiconPack {
   lemmas: Lemma[]
 }
 
-export type TabId = 'home' | 'review' | 'materials' | 'dictionary' | 'practice' | 'settings'
+export type TabId = 'home' | 'review' | 'materials' | 'dictionary' | 'practice' | 'methods' | 'settings'

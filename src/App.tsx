@@ -12,6 +12,7 @@ import { MaterialsView } from './components/MaterialsView'
 import { SettingsView } from './components/SettingsView'
 import { DictionaryView } from './components/DictionaryView'
 import { PracticeView } from './components/PracticeView'
+import { LearningMethodsView } from './components/LearningMethodsView'
 
 interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string }
 
@@ -75,8 +76,8 @@ export default function App() {
 
   return (
     <div className="redesign-shell">
-      <header className="redesign-mobile-header"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><strong>English Clip</strong></div><button type="button" onClick={() => setTab('settings')} aria-label="设置">设置</button></header>
-      <div className="redesign-layout"><aside className="redesign-rail"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><span><strong>English Clip</strong><small>英语剪贴本</small></span></div><button className="redesign-primary rail-capture" onClick={() => openCreate()}>＋ 记录新表达</button><nav aria-label="桌面主导航"><button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>▤　我的本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>◇　复习</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>◉　开口练</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}>♫　素材库</button><button className={tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('dictionary')}>Aa　词典</button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>⚙　设置</button></nav><p className="rail-foot">本地记录 · NAS 同步<br />记下来，想起时再翻。</p></aside>
+      <header className="redesign-mobile-header"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><strong>English Clip</strong></div><div className="redesign-mobile-tools"><button type="button" className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}>方法</button><button type="button" onClick={() => setTab('settings')} aria-label="设置">设置</button></div></header>
+      <div className="redesign-layout"><aside className="redesign-rail"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><span><strong>English Clip</strong><small>英语剪贴本</small></span></div><button className="redesign-primary rail-capture" onClick={() => openCreate()}>＋ 记录新表达</button><nav aria-label="桌面主导航"><button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>▤　我的本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>◇　复习</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>◉　开口练</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}>♫　素材库</button><button className={tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('dictionary')}>Aa　词典</button><button className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}>✧　学习方法</button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>⚙　设置</button></nav><p className="rail-foot">本地记录 · NAS 同步<br />记下来，想起时再翻。</p></aside>
       <main className="redesign-workspace">
         {tab === 'home' && (
           <HomeView
@@ -103,6 +104,7 @@ export default function App() {
         {tab === 'materials' && <MaterialsView onCapture={openCreate} onPractice={(text, title) => { setPracticeSeed({ text, title }); setTab('practice') }} onSettings={() => setTab('settings')} />}
         {tab === 'dictionary' && <DictionaryView onCapture={openCreate} />}
         {tab === 'practice' && <PracticeView entries={entries} seed={practiceSeed} onCapture={openCreate} />}
+        {tab === 'methods' && <LearningMethodsView onNavigate={setTab} onCapture={() => openCreate()} />}
         {tab === 'settings' && <SettingsView />}
       </main>
       </div>

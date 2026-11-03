@@ -847,6 +847,8 @@ code {
 .rail-foot { margin: auto 8px 0; color: var(--muted); font-size: 0.75rem; line-height: 1.8; }
 .redesign-workspace { flex: 1; min-width: 0; overflow-y: auto; }
 .redesign-mobile-header, .redesign-mobile-nav { display: none; }
+.redesign-mobile-tools { display: flex; align-items: center; gap: 8px; }
+.redesign-mobile-tools button.active { color: var(--accent); font-weight: 700; }
 .redesign-page { min-height: 100%; }
 .redesign-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 30px 32px 24px; border-bottom: 1px solid var(--line); }
 .redesign-heading h1 { margin: 0; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: clamp(1.65rem, 3vw, 2rem); font-weight: 800; letter-spacing: -.035em; }
@@ -962,6 +964,22 @@ code {
 .practice-choices button.active { background: #dff1ea; color: var(--accent); }
 .practice-page > .muted { margin: 25px 32px; }
 .recording { background: #9b4d36; border-color: #9b4d36; }
+.methods-page { max-width: 1000px; margin: auto; }
+.methods-intro { margin: 26px 32px 12px; padding: 20px 24px; border: 1px solid #c9ddd3; border-radius: 16px; background: #e7f0ec; }
+.methods-intro span { color: var(--accent); font-weight: 700; }
+.methods-intro p { margin: 8px 0 0; line-height: 1.65; }
+.methods-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 18px 32px 12px; }
+.method-card { display: flex; flex-direction: column; min-width: 0; padding: 23px; border: 1px solid var(--line); border-radius: 17px; background: #fffcf6; box-shadow: 0 7px 20px #28372a0b; }
+.method-card-top { display: flex; justify-content: space-between; align-items: center; }
+.method-number { color: var(--accent); font-family: Georgia, serif; font-size: 1.3rem; }
+.method-card h2 { margin: 20px 0 9px; font-size: 1.3rem; line-height: 1.4; }
+.method-idea { margin: 0; color: var(--muted); line-height: 1.7; }
+.method-card ol { margin: 20px 0; padding: 0 0 0 1.35rem; line-height: 1.7; }
+.method-card li { padding-left: 3px; margin-bottom: 7px; }
+.method-card li::marker { color: var(--accent); font-weight: 700; }
+.method-card-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 13px; margin-top: auto; padding-top: 10px; }
+.method-card-foot a { color: var(--muted); font-size: .78rem; text-underline-offset: 3px; }
+.methods-note { padding: 0 32px 30px; color: var(--muted); font-size: .8rem; line-height: 1.6; }
 .redesign-workspace > .page { max-width: 860px; padding: 30px 32px 60px; margin: auto; }
 @media (max-width: 1120px) { .redesign-home-layout { grid-template-columns: minmax(0, 1fr); } .redesign-detail { display: none; } .media-reader-layout { grid-template-columns: minmax(0,1fr); } .media-practice-side { border-left: 0; border-top: 1px solid var(--line); padding: 22px 0 0; } }
 @media (max-width: 900px) {
@@ -970,6 +988,7 @@ code {
   .redesign-rail { display: none; }
   .redesign-mobile-header { position: fixed; top: 0; left: 0; right: 0; z-index: 30; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 8px 17px; border-bottom: 1px solid var(--line); background: #f3efe6; }
   .redesign-mobile-header button { border: 0; background: transparent; color: var(--muted); }
+  .redesign-mobile-tools button { min-height: 40px; padding: 7px 8px; }
   .redesign-mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 3px; padding: 7px 7px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: #fffcf6; }
   .redesign-mobile-nav button { min-height: 48px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: .83rem; }
   .redesign-mobile-nav button.active { background: #dff1ea; color: var(--accent); font-weight: 700; }
@@ -990,5 +1009,9 @@ code {
   .practice-content, .practice-choices { margin: 18px; }
   .practice-mode-tabs { padding: 8px 18px 0; }
   .redesign-workspace > .page { padding: 20px 18px 40px; }
+  .methods-intro { margin: 18px; padding: 17px; }
+  .methods-list { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 0 18px 16px; }
+  .method-card { padding: 20px; }
+  .methods-note { padding: 0 18px 30px; }
   .redesign-sheet { align-self: end; border-radius: 20px 20px 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 }
