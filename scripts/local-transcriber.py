@@ -20,16 +20,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--tool-root', required=True, type=Path)
     parser.add_argument('--model', default='large-v3-turbo')
+    parser.add_argument('--cuda-lib', action='append', type=Path, default=[], help='Existing local CUDA DLL directory; affects this worker process only')
     parser.add_argument('--server', default='https://clip.evenhoo.top:8443')
     parser.add_argument('--email', default='')
     parser.add_argument('--file', type=Path, help='Offline verification: transcribe this file only')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--once', action='store_true')
     args = parser.parse_args()
+    dll_handles = []
+    for directory in args.cuda_lib:
+        if not directory.is_dir(): raise ValueError('CUDA library directory does not exist')
+        os.environ['PATH'] = str(directory) + os.pathsep + os.environ.get('PATH', '')
+        if os.name == 'nt': dll_handles.append(os.add_dll_directory(str(directory.resolve())))
     sys.path.insert(0, str(args.tool_root / 'src' / 'backend'))
     from asr_worker import load_whisper_model
     print('Loading installed local model; no model download.', flush=True)
     model, device, compute_type, model_path = load_whisper_model(args.model, args.tool_root / 'models')
+    print('Local model ready on ' + device, flush=True)
 
     def transcribe(path):
         nonlocal model, device
@@ -59,7 +66,7 @@ def main():
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps(result, ensure_ascii=False), encoding='utf8')
-        print(json.dumps({'ok': True, 'segments': len(result['segments']), 'characters': len(result['transcript'])}))
+        print(json.dumps({'ok': True, 'device': device, 'segments': len(result['segments']), 'characters': len(result['transcript'])}))
         return
     parsed = urlparse(args.server)
     if parsed.scheme != 'https' and parsed.hostname not in ('127.0.0.1', 'localhost'):

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { cleanTranscript, contentHash, estimateLevel, LEVELS, parseEpub, type BookData } from '../lib/books'
+import { cleanTranscript, contentHash, estimateLevel, LEVELS, parseEpub, parseTimedTranscript, type BookData } from '../lib/books'
 import { uploadMedia, type MediaItem } from '../lib/media'
 
-interface Row { file: File; title: string; transcript: string; level: string; book?: BookData; status: string }
+interface Row { file: File; title: string; transcript: string; level: string; book?: BookData; status: string; segments?: MediaItem['segments'] }
 export function MaterialImport({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [rows, setRows] = useState<Row[]>([])
   const [busy, setBusy] = useState(false)
@@ -16,9 +16,11 @@ export function MaterialImport({ onClose, onDone }: { onClose: () => void; onDon
       try {
         const book = /\.epub$/i.test(file.name) ? await parseEpub(file) : undefined
         const matching = all.find((f) => /\.(txt|srt|vtt)$/i.test(f.name) && stem(f) === stem(file))
-        const transcript = matching ? cleanTranscript(await matching.text()) : ''
+        const raw = matching ? await matching.text() : ''
+        const segments = parseTimedTranscript(raw)
+        const transcript = segments.length ? segments.map((part) => part.text).join('\n') : cleanTranscript(raw)
         const text = book ? book.chapters.slice(0, 6).flatMap((c) => c.paragraphs).join(' ') : transcript
-        result.push({ file, book, transcript, title: book?.title || file.name.replace(/\.[^.]+$/, ''), level: estimateLevel(text), status: book ? `${book.chapters.length} 节 · 正文可读` : matching ? '已匹配文稿' : '无文稿 · 可在本机转写' })
+        result.push({ file, book, transcript, segments, title: book?.title || file.name.replace(/\.[^.]+$/, ''), level: estimateLevel(text), status: book ? `${book.chapters.length} 节 · 正文可读` : segments.length ? `已匹配 ${segments.length} 句时间字幕` : matching ? '已匹配文稿' : '无文稿 · 可在本机转写' })
       } catch { result.push({ file, title: file.name, transcript: '', level: '', status: '文件无法读取，请重新下载' }) }
     }
     setRows(result); setBusy(false); setMessage(result.length ? '检查配对和参考等级后开始导入。等级按文本长度与句子结构粗估，可手动调整。' : '请选择音视频或 EPUB，可同时选择同名文稿。')
@@ -30,8 +32,8 @@ export function MaterialImport({ onClose, onDone }: { onClose: () => void; onDon
       if (row.status === '文件无法读取，请重新下载' || row.status === '已入库') continue
       setMessage(`正在导入 ${i + 1} / ${rows.length}：${row.title}`)
       try {
-        const kind: MediaItem['kind'] = row.book ? 'book' : /\.(mp4|mov)$/i.test(row.file.name) ? 'video' : 'audio'
-        await uploadMedia({ title: row.title, source: row.book?.author || '私人素材', kind, transcript: row.transcript, chapters: row.book?.chapters, author: row.book?.author, level: row.level, levelBasis: '文本估算／可调整', contentHash: await contentHash(row.file), file: row.file })
+        const kind: MediaItem['kind'] = row.book ? 'book' : row.file.type.startsWith('video/') || /\.(mp4|mov)$/i.test(row.file.name) ? 'video' : 'audio'
+        await uploadMedia({ title: row.title, source: row.book?.author || '私人素材', kind, transcript: row.transcript, segments: row.segments, chapters: row.book?.chapters, author: row.book?.author, level: row.level, levelBasis: '文本估算／可调整', contentHash: await contentHash(row.file), file: row.file })
         row.status = '已入库'
       } catch (error) { row.status = `失败：${(error as Error).message}` }
       setRows([...rows])

@@ -17,6 +17,20 @@ export function cleanTranscript(text: string) {
   if (/\nREAD\s*\n/.test(text)) return text.split(/\nREAD\s*\n/).slice(1).join('\n').trim()
   return text.replace(/^\d+\s*$/gm, '').replace(/^.*-->.*$/gm, '').replace(/<[^>]*>/g, '').trim()
 }
+export function parseTimedTranscript(text: string): Array<{ start: number; end: number; text: string }> {
+  const seconds = (value: string) => value.replace(',', '.').split(':').reduce((sum, part) => sum * 60 + Number(part), 0)
+  const result = []
+  for (const block of text.replace(/\r/g, '').split(/\n\s*\n/)) {
+    const lines = block.split('\n'), index = lines.findIndex((line) => line.includes('-->'))
+    if (index < 0) continue
+    const match = lines[index].match(/([\d:. ,]+)\s*-->\s*([\d:.,]+)/)
+    if (!match) continue
+    const start = seconds(match[1].trim()), end = seconds(match[2].trim())
+    const content = lines.slice(index + 1).join(' ').replace(/<[^>]*>/g, '').trim()
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start && start >= 0 && content) result.push({ start, end, text: content })
+  }
+  return result
+}
 export async function contentHash(file: Blob) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))].map((v) => v.toString(16).padStart(2, '0')).join('')
 }

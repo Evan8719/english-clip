@@ -217,6 +217,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       const now = new Date().toISOString()
       const item = { id: randomUUID(), ownerId: user.id, title, kind, source: String(body.source || '').trim().slice(0, 160), transcript, exercises: transcript ? makeExercises(transcript) : [], status: kind === 'text' ? 'ready' : 'awaiting-file', bytes: 0, extension: '', createdAt: now, updatedAt: now, error: '' }
       Object.assign(item, { contentHash, level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : '', levelBasis: String(body.levelBasis || '待评估').slice(0, 50), chapters, author: String(body.author || '').slice(0, 200) })
+      item.segments = Array.isArray(body.segments) ? body.segments.slice(0, 10000).filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start >= 0 && s.end > s.start).map((s) => ({ start: s.start, end: s.end, text: String(s.text || '').slice(0, 2000) })) : []
       if (kind === 'book' && chapters.length) item.status = 'ready'
       bucket(user.id)[item.id] = item
       save()
@@ -265,6 +266,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '请等待当前处理完成后编辑')
       const body = await readBody(req)
       if (typeof body.level === 'string') { item.level = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : ''; item.levelBasis = '手动选择' }
+      if (Number.isFinite(body.playbackPosition)) item.playbackPosition = Math.max(0, Math.min(86400, body.playbackPosition))
       if (body.readingPosition && item.kind === 'book') item.readingPosition = { chapter: Math.max(0, Math.min(item.chapters.length - 1, Number(body.readingPosition.chapter) || 0)), paragraph: Math.max(0, Math.floor(Number(body.readingPosition.paragraph) || 0)) }
       if (typeof body.transcript === 'string') item.transcript = body.transcript.trim().slice(0, 200000)
       if (typeof body.title === 'string') item.title = body.title.trim().slice(0, 160) || item.title

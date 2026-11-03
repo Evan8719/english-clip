@@ -20,6 +20,7 @@ export interface MediaItem {
   chapters?: BookChapter[]
   readingPosition?: { chapter: number; paragraph: number }
   segments?: Array<{ start: number; end: number; text: string }>
+  playbackPosition?: number
   source: string
   transcript: string
   exercises: Exercise[]
@@ -52,7 +53,7 @@ export async function patchMedia(id: string, changes: object): Promise<MediaItem
   return (await request<{ item: MediaItem }>(`/api/media/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) })).item
 }
 
-export async function uploadMedia(input: { title: string; source: string; transcript: string; kind: MediaItem['kind']; file?: File; level?: string; levelBasis?: string; contentHash?: string; chapters?: BookChapter[]; author?: string }): Promise<MediaItem> {
+export async function uploadMedia(input: { title: string; source: string; transcript: string; kind: MediaItem['kind']; file?: File; level?: string; levelBasis?: string; contentHash?: string; chapters?: BookChapter[]; author?: string; segments?: MediaItem['segments'] }): Promise<MediaItem> {
   const { file, ...metadata } = input
   const created = await request<{ item: MediaItem; duplicate?: boolean }>('/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(metadata) })
   if (created.duplicate && (created.item.extension || !file)) return created.item
