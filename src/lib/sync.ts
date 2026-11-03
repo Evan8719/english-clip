@@ -95,6 +95,7 @@ export function isSyncConfigured(): boolean {
 export function isLoggedIn(): boolean {
   return Boolean(getToken())
 }
+export function getStoredUserId(): string { return getToken() ? readStoredUser()?.id || '' : '' }
 
 export async function getCurrentUser(): Promise<SyncUser | null> {
   if (!getToken()) {

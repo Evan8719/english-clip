@@ -4,6 +4,7 @@ import { categoriesForFilter, listSources, normalizeCategory } from '../lib/cate
 import { EntryCard } from './EntryCard'
 
 interface Props {
+  onOpenOrigin?: (origin: NonNullable<Entry['enrichment']>['origin']) => void
   entries: Entry[]
   categories: string[]
   onEdit: (entry: Entry) => void
@@ -15,7 +16,7 @@ interface Props {
   onDictionary: () => void
 }
 
-export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary }: Props) {
+export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary, onOpenOrigin }: Props) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
   const [source, setSource] = useState('全部来源')
@@ -82,7 +83,7 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
         {entries.length > 0 && <button type="button" className="chip" onClick={() => { setQuery(''); setCategory('全部'); setSource('全部来源'); setKind('all') }}>清除筛选</button>}
       </div> : <div className="redesign-home-layout"><div className="home-grid">
         {filtered.map((entry) => <div key={entry.id} onClick={() => setSelectedId(entry.id)} className={entry.kind === 'sentence' ? 'home-grid-item sentence' : 'home-grid-item'}>
-          <EntryCard key={entry.updatedAt} entry={entry} compact onEdit={() => onEdit(entry)} onUpdated={onUpdated} onDelete={() => onDelete(entry)} />
+          <EntryCard key={entry.updatedAt} entry={entry} compact onEdit={() => onEdit(entry)} onUpdated={onUpdated} onOpenOrigin={entry.enrichment?.origin ? () => onOpenOrigin?.(entry.enrichment?.origin) : undefined} onDelete={() => onDelete(entry)} />
         </div>)}
       </div><aside className="redesign-detail">{selected && <><span className="redesign-tag">{selected.kind === 'word' ? '单词' : selected.kind === 'phrase' ? '短语' : '句子'} · {selected.category || '其他'}</span><h2>{selected.text}</h2>{selected.enrichment?.phonetic && <p>{selected.enrichment.phonetic}</p>}{selected.enrichment?.definitionsZh?.map((line) => <p className="detail-meaning" key={line}>{line}</p>)}{selected.enrichment?.definitions?.slice(0, 2).map((line) => <p className="detail-definition" key={line}>{line}</p>)}{selected.context && <div className="detail-context"><small>原句语境</small><p>{selected.context}</p></div>}{selected.source && <p className="detail-source">来源 · {selected.source}</p>}<button className="redesign-secondary" onClick={() => onEdit(selected)}>编辑这条记录</button></>}</aside></div>}
     </div>

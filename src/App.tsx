@@ -1,3 +1,4 @@
+import { NavIcon } from './components/NavIcon'
 import { useCallback, useEffect, useState } from 'react'
 import type { Entry, Familiarity, TabId } from './types'
 import { createEntry, listEntries, reviewEntry, softDeleteEntry, updateEntry } from './db/entries'
@@ -14,9 +15,10 @@ import { DictionaryView } from './components/DictionaryView'
 import { PracticeView } from './components/PracticeView'
 import { LearningMethodsView } from './components/LearningMethodsView'
 
-interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string }
+interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number } }
 
 export default function App() {
+  const [materialOrigin, setMaterialOrigin] = useState<CaptureSeed['origin']>(undefined)
   const [tab, setTab] = useState<TabId>('home')
   const [entries, setEntries] = useState<Entry[]>([])
   const [categories, setCategories] = useState<string[]>([])
@@ -77,7 +79,7 @@ export default function App() {
   return (
     <div className="redesign-shell">
       <header className="redesign-mobile-header"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><strong>English Clip</strong></div><div className="redesign-mobile-tools"><button type="button" className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}>方法</button><button type="button" onClick={() => setTab('settings')} aria-label="设置">设置</button></div></header>
-      <div className="redesign-layout"><aside className="redesign-rail"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><span><strong>English Clip</strong><small>英语剪贴本</small></span></div><button className="redesign-primary rail-capture" onClick={() => openCreate()}>＋ 记录新表达</button><nav aria-label="桌面主导航"><button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>▤　我的本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>◇　复习</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>◉　开口练</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}>♫　素材库</button><button className={tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('dictionary')}>Aa　词典</button><button className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}>✧　学习方法</button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>⚙　设置</button></nav><p className="rail-foot">本地记录 · NAS 同步<br />记下来，想起时再翻。</p></aside>
+      <div className="redesign-layout"><aside className="redesign-rail"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><span><strong>English Clip</strong><small>英语剪贴本</small></span></div><button className="redesign-primary rail-capture" onClick={() => openCreate()}>＋ 记录新表达</button><nav aria-label="桌面主导航"><button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>▤　我的本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>◇　复习</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>◉　开口练</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => { setMaterialOrigin(undefined); setTab('materials') }}>♫　素材库</button><button className={tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('dictionary')}>Aa　词典</button><button className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}>✧　学习方法</button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>⚙　设置</button></nav><p className="rail-foot">本地记录 · NAS 同步<br />记下来，想起时再翻。</p></aside>
       <main className="redesign-workspace">
         {tab === 'home' && (
           <HomeView
@@ -88,8 +90,9 @@ export default function App() {
             onDelete={handleDelete}
             lexiconStatus={lexiconReady ? '' : lexiconError ? '本地词库暂未加载' : '词库加载中…'}
             onCapture={() => openCreate()}
-            onMaterials={() => setTab('materials')}
+            onMaterials={() => { setMaterialOrigin(undefined); setTab('materials') }}
             onDictionary={() => setTab('dictionary')}
+            onOpenOrigin={(origin) => { setMaterialOrigin(origin); setTab('materials') }}
           />
         )}
         {tab === 'review' && (
@@ -101,14 +104,14 @@ export default function App() {
             onHome={() => setTab('home')}
           />
         )}
-        {tab === 'materials' && <MaterialsView onCapture={openCreate} onPractice={(text, title) => { setPracticeSeed({ text, title }); setTab('practice') }} onSettings={() => setTab('settings')} />}
+        {tab === 'materials' && <MaterialsView initialOrigin={materialOrigin} onCapture={openCreate} onPractice={(text, title) => { setPracticeSeed({ text, title }); setTab('practice') }} onSettings={() => setTab('settings')} />}
         {tab === 'dictionary' && <DictionaryView onCapture={openCreate} />}
         {tab === 'practice' && <PracticeView entries={entries} seed={practiceSeed} onCapture={openCreate} />}
         {tab === 'methods' && <LearningMethodsView onNavigate={setTab} onCapture={() => openCreate()} />}
         {tab === 'settings' && <SettingsView />}
       </main>
       </div>
-      <nav className="redesign-mobile-nav" aria-label="手机主导航"><button className={tab === 'home' || tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('home')}>本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>复习</button><button className="redesign-nav-plus" aria-label="记录新词句" onClick={() => openCreate()}>＋</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}>素材</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>开口练</button></nav>
+      <nav className="redesign-mobile-nav" aria-label="手机主导航"><button className={tab === 'home' || tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('home')}><NavIcon name="book" /><span>本子</span></button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}><NavIcon name="review" /><span>复习</span></button><button className="redesign-nav-plus" aria-label="记录新词句" onClick={() => openCreate()}><NavIcon name="plus" /></button><button className={tab === 'materials' ? 'active' : ''} onClick={() => { setMaterialOrigin(undefined); setTab('materials') }}><NavIcon name="audio" /><span>素材</span></button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}><NavIcon name="chat" /><span>开口练</span></button></nav>
 
       <CaptureModal
         open={captureOpen}
@@ -124,6 +127,8 @@ export default function App() {
           setEditingEntry(null)
         }}
         onSave={async (input) => {
+          const origin = editingEntry?.enrichment?.origin || captureSeed.origin
+          const enrichment = origin ? { ...(input.enrichment || { definitions: [], examples: [] }), origin } : input.enrichment
           if (editingEntry) {
             await updateEntry(editingEntry.id, {
               text: input.text,
@@ -134,10 +139,10 @@ export default function App() {
               source: input.source,
               sourceDetail: input.sourceDetail,
               mySentence: input.mySentence,
-              enrichment: input.enrichment,
+              enrichment,
             })
           } else {
-            await createEntry(input)
+            await createEntry({ ...input, enrichment })
           }
           await refresh()
           scheduleSilentSync()

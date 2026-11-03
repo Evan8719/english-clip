@@ -3,6 +3,7 @@ export type Familiarity = 'new' | 'seen' | 'usable'
 export type FrequencyBand = 1 | 2 | 3 | 4 | 5
 
 export interface Enrichment {
+  origin?: { materialId: string; chapter?: number; paragraph?: number }
   lemmaId?: string
   phonetic?: string
   /** Native speaker audio URL when available */

@@ -19,6 +19,7 @@ interface Props {
   onDelete?: () => void
   onEdit?: () => void
   onUpdated?: () => void
+  onOpenOrigin?: () => void
 }
 
 export function EntryCard({
@@ -28,6 +29,7 @@ export function EntryCard({
   onDelete,
   onEdit,
   onUpdated,
+  onOpenOrigin,
 }: Props) {
   const [flipped, setFlipped] = useState(false)
   const [loadingZh, setLoadingZh] = useState(false)
@@ -132,6 +134,7 @@ export function EntryCard({
       </button>
 
       <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+        {onOpenOrigin && <button type="button" className="chip" onClick={onOpenOrigin}>回到原文</button>}
         <div className="row card-action-row">
           <button
             type="button"

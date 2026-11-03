@@ -1,3 +1,4 @@
+import { streamConversation } from './deepseek.mjs'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { once } from 'node:events'
@@ -7,7 +8,7 @@ import { execFile } from 'node:child_process'
 
 const run = promisify(execFile)
 const MAX_UPLOAD = 1024 * 1024 * 1024
-const EXTENSIONS = { mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', webm: 'audio/webm', mp4: 'video/mp4', mov: 'video/quicktime', ogg: 'audio/ogg' }
+const EXTENSIONS = { mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', webm: 'audio/webm', mp4: 'video/mp4', mov: 'video/quicktime', ogg: 'audio/ogg', epub: 'application/epub+zip' }
 
 function atomicJson(file, value) {
   const tmp = `${file}.tmp`
@@ -16,7 +17,7 @@ function atomicJson(file, value) {
   renameSync(tmp, file)
 }
 
-function makeExercises(transcript) {
+export function makeExercises(transcript) {
   const lines = transcript.replace(/\r/g, '').split(/(?<=[.!?])\s+|\n+/).map((line) => line.trim()).filter((line) => line.length > 14)
   const sampled = lines.slice(0, 30).filter((_, index) => index % Math.max(1, Math.ceil(lines.length / 8)) === 0).slice(0, 8)
   const exercises = sampled.map((line, index) => {
@@ -54,11 +55,12 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
   }
   for (const items of Object.values(index)) for (const item of Object.values(items)) {
     if (item.status === 'processing') { item.status = 'failed'; item.error = '服务重启中断了处理，请重新生成'; save() }
+    if (item.status === 'transcribing-local') { item.status = 'queued-local'; save() }
   }
   const reject = (res, status, message) => sendJson(res, status, { ok: false, message })
 
-  function readKey(uid) {
-    const encrypted = keys[uid]
+  function readKey(uid, provider = 'openai') {
+    const encrypted = keys[provider === 'deepseek' ? `${uid}:deepseek` : uid]
     if (!encrypted) return ''
     try {
       const [iv, tag, data] = encrypted.split('.')
@@ -129,7 +131,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       renameSync(tmp, target)
       item.extension = extension
       item.bytes = size
-      item.status = item.transcript?.trim() ? 'ready' : 'uploaded'
+      item.status = item.kind === 'book' || item.transcript?.trim() ? 'ready' : 'uploaded'
       item.exercises = item.transcript?.trim() ? makeExercises(item.transcript) : []
       item.updatedAt = new Date().toISOString()
       save()
@@ -159,49 +161,47 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
 
   async function handle(req, res, url, user, readBody) {
     const path = url.pathname
+    if (path === '/api/local/jobs' && req.method === 'GET') {
+      if (!user) return reject(res, 401, '未登录')
+      for (const item of Object.values(bucket(user.id))) if (item.status === 'transcribing-local' && (item.localLeaseUntil || 0) < Date.now()) { item.status = 'queued-local'; save() }
+      return sendJson(res, 200, { ok: true, items: Object.values(bucket(user.id)).filter((item) => item.status === 'queued-local').map(publicItem) })
+    }
     if (path === '/api/ai/status' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
-      return sendJson(res, 200, { ok: true, configured: Boolean(readKey(user.id)) })
+      return sendJson(res, 200, { ok: true, configured: Boolean(readKey(user.id)), deepseekConfigured: Boolean(readKey(user.id, 'deepseek')), chatProvider: 'DeepSeek', model: 'deepseek-flash' })
     }
     if (path === '/api/ai/key' && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
       const body = await readBody(req)
+      const keyId = body.provider === 'deepseek' ? `${user.id}:deepseek` : user.id
       const key = String(body.apiKey || '').trim()
       if (!key.startsWith('sk-') || key.length > 300) return reject(res, 400, 'API 密钥格式不正确')
       const iv = randomBytes(12)
       const cipher = createCipheriv('aes-256-gcm', encryptionKey, iv)
       const data = Buffer.concat([cipher.update(key, 'utf8'), cipher.final()])
-      keys[user.id] = `${iv.toString('hex')}.${cipher.getAuthTag().toString('hex')}.${data.toString('hex')}`
+      keys[keyId] = `${iv.toString('hex')}.${cipher.getAuthTag().toString('hex')}.${data.toString('hex')}`
       saveKeys()
       return sendJson(res, 200, { ok: true, configured: true })
     }
     if (path === '/api/ai/key' && req.method === 'DELETE') {
       if (!user) return reject(res, 401, '未登录')
-      delete keys[user.id]
+      delete keys[url.searchParams.get('provider') === 'deepseek' ? `${user.id}:deepseek` : user.id]
       saveKeys()
       return sendJson(res, 200, { ok: true, configured: false })
     }
     if (path === '/api/ai/chat' && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
-      const apiKey = readKey(user.id)
-      if (!apiKey) return reject(res, 409, '先在设置中配置 OpenAI API 密钥')
-      if (Date.now() - (recentChat.get(user.id) || 0) < 3000) return reject(res, 429, '请稍候再发送')
+      const apiKey = readKey(user.id, 'deepseek')
+      if (!apiKey) return reject(res, 409, '先在设置中配置 DeepSeek API 密钥')
+      if (recentChat.get(user.id)) return reject(res, 429, '当前回答尚未完成')
       const body = await readBody(req)
-      const message = String(body.message || '').trim().slice(0, 800)
-      const focus = String(body.focus || '').trim().slice(0, 300)
-      const history = Array.isArray(body.history) ? body.history.slice(-8).filter((turn) => turn && ['user', 'assistant'].includes(turn.role) && typeof turn.content === 'string').map((turn) => ({ role: turn.role, content: turn.content.slice(0, 800) })) : []
-      if (!message) return reject(res, 400, '请输入练习内容')
-      recentChat.set(user.id, Date.now())
-      const response = await fetch('https://api.openai.com/v1/responses', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'gpt-5.4-mini', store: false, max_output_tokens: 300, instructions: `You are a warm, concise English conversation partner for a Chinese learner. The focus expression is: ${focus || 'the learner’s own words'}. Reply mainly in natural English, ask one short follow-up question, and offer one gentle correction only when useful. No grades, streaks, or pressure.`, input: [...history, { role: 'user', content: message }] }), signal: AbortSignal.timeout(60000) })
-      if (!response.ok) return reject(res, 502, `对话服务返回 ${response.status}；请检查 API 密钥与余额`)
-      const payload = await response.json()
-      const reply = payload.output?.flatMap((part) => part.content || []).filter((part) => part.type === 'output_text').map((part) => part.text).join('\n').trim()
-      if (!reply) return reject(res, 502, '对话服务没有返回内容')
-      return sendJson(res, 200, { ok: true, reply })
+      recentChat.set(user.id, true)
+      try { await streamConversation(req, res, { apiKey, body }) } finally { recentChat.delete(user.id) }
+      return true
     }
     if (path === '/api/media' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
-      return sendJson(res, 200, { ok: true, items: Object.values(bucket(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(publicItem) })
+      return sendJson(res, 200, { ok: true, items: Object.values(bucket(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((item) => { const result = publicItem(item); if (item.kind === 'book') { delete result.chapters; result.chapterCount = item.chapters?.length || 0 } return result }) })
     }
     if (path === '/api/media' && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
@@ -209,27 +209,50 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       const kind = String(body.kind || '')
       const title = String(body.title || '').trim().slice(0, 160)
       const transcript = String(body.transcript || '').trim().slice(0, 200000)
-      if (!title || !['audio', 'video', 'text'].includes(kind)) return reject(res, 400, '标题或素材类型无效')
+      if (!title || !['audio', 'video', 'text', 'book'].includes(kind)) return reject(res, 400, '标题或素材类型无效')
+      const contentHash = /^[a-f0-9]{64}$/.test(body.contentHash || '') ? body.contentHash : ''
+      const duplicate = contentHash && Object.values(bucket(user.id)).find((item) => item.contentHash === contentHash)
+      if (duplicate) return sendJson(res, 200, { ok: true, item: publicItem(duplicate), duplicate: true })
+      const chapters = Array.isArray(body.chapters) ? body.chapters.slice(0, 1000).map((chapter) => ({ title: String(chapter.title || '').slice(0, 300), paragraphs: Array.isArray(chapter.paragraphs) ? chapter.paragraphs.map((p) => String(p).slice(0, 20000)).slice(0, 10000) : [] })) : []
       const now = new Date().toISOString()
       const item = { id: randomUUID(), ownerId: user.id, title, kind, source: String(body.source || '').trim().slice(0, 160), transcript, exercises: transcript ? makeExercises(transcript) : [], status: kind === 'text' ? 'ready' : 'awaiting-file', bytes: 0, extension: '', createdAt: now, updatedAt: now, error: '' }
+      Object.assign(item, { contentHash, level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : '', levelBasis: String(body.levelBasis || '待评估').slice(0, 50), chapters, author: String(body.author || '').slice(0, 200) })
+      if (kind === 'book' && chapters.length) item.status = 'ready'
       bucket(user.id)[item.id] = item
       save()
       return sendJson(res, 201, { ok: true, item: publicItem(item) })
     }
-    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process))?$/.exec(path)
+    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local))?$/.exec(path)
     if (!match) return false
     const [, id, action] = match
     const item = user ? get(user.id, id) : Object.values(index).map((items) => items[id]).find(Boolean)
     if (!item) return reject(res, 404, '素材不存在')
     if (action === 'file' && (req.method === 'GET' || req.method === 'HEAD')) return serveFile(req, res, item, url)
     if (!user) return reject(res, 401, '未登录')
+    if (action === 'local' && req.method === 'POST') {
+      if (!item.extension || item.kind === 'book') return reject(res, 400, '请先上传音视频')
+      const body = await readBody(req)
+      if (body.claim) {
+        if (item.status !== 'queued-local') return reject(res, 409, '任务已被领取或取消')
+        item.status = 'transcribing-local'; item.localLeaseUntil = Date.now() + 2 * 60 * 60 * 1000
+      } else if (typeof body.transcript === 'string') {
+        if (item.status !== 'transcribing-local') return reject(res, 409, '任务状态已变化')
+        item.transcript = body.transcript.trim().slice(0, 200000)
+        item.segments = Array.isArray(body.segments) ? body.segments.slice(0, 10000).filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start >= 0 && s.end >= s.start).map((s) => ({ start: s.start, end: s.end, text: String(s.text || '').slice(0, 2000) })) : []
+        item.exercises = makeExercises(item.transcript); item.status = 'ready'; item.error = ''
+      } else if (body.error) { item.status = 'failed'; item.error = String(body.error).slice(0, 300) }
+      else { if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '任务正在处理'); item.status = 'queued-local'; item.error = '' }
+      item.updatedAt = new Date().toISOString(); save()
+      return sendJson(res, 200, { ok: true, item: publicItem(item) })
+    }
     if (action === 'file' && req.method === 'PUT') {
       if (item.extension) return reject(res, 409, '文件已经上传')
       await receiveFile(req, item)
       return sendJson(res, 200, { ok: true, item: publicItem(item) })
     }
     if (action === 'process' && req.method === 'POST') {
-      if (item.status === 'processing') return reject(res, 409, '正在处理')
+      if (item.kind === 'book') return reject(res, 400, '电子书请选取段落阅读或练习')
+      if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '正在处理')
       if (item.kind !== 'text' && !item.extension) return reject(res, 400, '请先上传文件')
       const key = readKey(user.id)
       if (!item.transcript.trim() && !key) return reject(res, 409, '请先在设置中填写转写 API 密钥，或手动添加原文')
@@ -239,11 +262,17 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
     }
     if (!action && req.method === 'GET') return sendJson(res, 200, { ok: true, item: publicItem(item) })
     if (!action && req.method === 'PATCH') {
+      if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '请等待当前处理完成后编辑')
       const body = await readBody(req)
+      if (typeof body.level === 'string') { item.level = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : ''; item.levelBasis = '手动选择' }
+      if (body.readingPosition && item.kind === 'book') item.readingPosition = { chapter: Math.max(0, Math.min(item.chapters.length - 1, Number(body.readingPosition.chapter) || 0)), paragraph: Math.max(0, Math.floor(Number(body.readingPosition.paragraph) || 0)) }
       if (typeof body.transcript === 'string') item.transcript = body.transcript.trim().slice(0, 200000)
       if (typeof body.title === 'string') item.title = body.title.trim().slice(0, 160) || item.title
-      item.exercises = item.transcript ? makeExercises(item.transcript) : []
-      item.status = item.transcript ? 'ready' : (item.extension ? 'uploaded' : 'awaiting-file')
+      if (typeof body.transcript === 'string') {
+        item.exercises = item.transcript ? makeExercises(item.transcript) : []
+        item.status = item.kind === 'book' || item.transcript ? 'ready' : (item.extension ? 'uploaded' : 'awaiting-file')
+        item.segments = []
+      }
       item.updatedAt = new Date().toISOString(); save()
       return sendJson(res, 200, { ok: true, item: publicItem(item) })
     }

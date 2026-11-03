@@ -8,6 +8,7 @@
   "main": "electron/main.cjs",
   "scripts": {
     "materials:starter": "node scripts/prepare-starter-materials.mjs",
+    "test:library": "node scripts/test-library-api.mjs",
     "materials:verify": "node scripts/verify-starter-materials.mjs",
     "dev": "vite",
     "app": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && electron .\"",
@@ -21,6 +22,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "idb": "^8.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

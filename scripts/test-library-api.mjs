@@ -1,0 +1,64 @@
+import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
+import { mkdirSync, readFileSync } from 'node:fs'
+import { resolve, join } from 'node:path'
+import { EventEmitter } from 'node:events'
+import { streamConversation } from '../nas/deepseek.mjs'
+
+const data = resolve(`work/library-api-test-${process.pid}`), port = 44000 + process.pid % 9000
+mkdirSync(data, { recursive: true })
+const child = spawn(process.execPath, ['nas/server.mjs'], { env: { ...process.env, EC_DATA_DIR: data, EC_WEB_DIR: resolve('dist'), EC_HOST: '127.0.0.1', EC_PORT: String(port) }, windowsHide: true, stdio: 'ignore' })
+const pause = (ms) => new Promise((r) => setTimeout(r, ms))
+async function api(path, token = '', method = 'GET', body) {
+  const res = await fetch(`http://127.0.0.1:${port}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+  return { status: res.status, data: await res.json() }
+}
+try {
+  for (let i = 0; i < 50; i++) { try { await api('/health'); break } catch { await pause(100) } }
+  const owner = await api('/api/auth/register', '', 'POST', { email: 'owner@example.test', password: 'test-only-password' })
+  const token = owner.data.token
+  assert.ok(token)
+  const book = { title: 'Test book', kind: 'book', contentHash: 'a'.repeat(64), level: 'B1', chapters: [{ title: 'Chapter one', paragraphs: ['Take your time. Enjoy this book.'] }] }
+  const created = await api('/api/media', token, 'POST', book)
+  assert.equal(created.status, 201)
+  const id = created.data.item.id
+  assert.equal((await api('/api/media', token, 'POST', book)).data.duplicate, true)
+  const listing = await api('/api/media', token)
+  assert.equal(listing.data.items[0].chapters, undefined)
+  assert.equal((await api(`/api/media/${id}`, token)).data.item.chapters.length, 1)
+  assert.equal((await api(`/api/media/${id}`, token, 'PATCH', { readingPosition: { chapter: 0, paragraph: 1 }, level: 'B2' })).data.item.readingPosition.paragraph, 1)
+  assert.equal((await api(`/api/media/${id}/process`, token, 'POST', {})).status, 400)
+  await api('/api/ai/key', token, 'POST', { apiKey: 'sk-test-deepseek-not-real', provider: 'deepseek' })
+  const status = (await api('/api/ai/status', token)).data
+  assert.equal(status.deepseekConfigured, true); assert.equal(status.configured, false)
+  assert.ok(!readFileSync(join(data, 'media', 'ai-keys.json'), 'utf8').includes('sk-test-deepseek-not-real'))
+  const audio = (await api('/api/media', token, 'POST', { title: 'Test audio', kind: 'audio' })).data.item
+  const upload = await fetch(`http://127.0.0.1:${port}/api/media/${audio.id}/file`, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'X-File-Extension': 'mp3' }, body: 'ID3test' })
+  assert.equal(upload.status, 200)
+  assert.equal((await api(`/api/media/${audio.id}/local`, token, 'POST', {})).data.item.status, 'queued-local')
+  assert.equal((await api('/api/local/jobs', token)).data.items.length, 1)
+  assert.equal((await api(`/api/media/${audio.id}/local`, token, 'POST', { claim: true })).data.item.status, 'transcribing-local')
+  assert.equal((await api(`/api/media/${audio.id}/local`, token, 'POST', { claim: true })).status, 409)
+  const complete = await api(`/api/media/${audio.id}/local`, token, 'POST', { transcript: 'I look forward to reading the book. It is an interesting story.', segments: [{ start: 0, end: 3, text: 'I look forward to reading the book.' }] })
+  assert.equal(complete.data.item.status, 'ready'); assert.equal(complete.data.item.segments.length, 1)
+  assert.ok(complete.data.item.exercises.length > 1)
+  const inviteCode = readFileSync(join(data, 'invite-code.txt'), 'utf8').trim()
+  const other = await api('/api/auth/register', '', 'POST', { email: 'other@example.test', password: 'test-only-password', inviteCode })
+  assert.equal((await api(`/api/media/${id}`, other.data.token)).status, 404)
+  assert.equal((await api('/api/local/jobs', other.data.token)).data.items.length, 0)
+  assert.equal((await api('/api/local/jobs')).status, 401)
+  const res = new EventEmitter(); const chunks = []
+  Object.assign(res, { destroyed: false, writableEnded: false, writeHead() {}, flushHeaders() {}, write(s) { chunks.push(s) }, end() { this.writableEnded = true } })
+  let beforeEnd = false, requestBody
+  const fetcher = async (_url, init) => {
+    requestBody = JSON.parse(init.body)
+    return new Response(new ReadableStream({ start(controller) {
+      controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'))
+      setTimeout(() => { beforeEnd = chunks.some((c) => c.includes('Hello')); controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n')); controller.close() }, 40)
+    } }))
+  }
+  await streamConversation(null, res, { apiKey: 'test', body: { message: 'Hello' }, fetcher })
+  assert.equal(beforeEnd, true); assert.equal(requestBody.model, 'deepseek-flash'); assert.equal(requestBody.thinking.type, 'disabled')
+  assert.ok(chunks.at(-1).includes('"done":true'))
+  console.log(JSON.stringify({ ok: true, checks: ['book chapters and progress', 'content deduplication', 'private account isolation', 'encrypted separate DeepSeek key', 'local queue claim and completion', 'timestamp segments', 'incremental AI stream before completion'] }))
+} finally { child.kill(); await pause(100) }

@@ -381,7 +381,7 @@ async function handleApi(req, res, url) {
 
   const user = readToken(bearer(req))
 
-  if (path.startsWith('/api/media') || path.startsWith('/api/ai/')) {
+  if (path.startsWith('/api/media') || path.startsWith('/api/ai/') || path.startsWith('/api/local/')) {
     const handled = await mediaApi.handle(req, res, url, user, readBody)
     if (handled !== false) return
   }

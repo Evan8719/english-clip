@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { SyncUser as User } from '../lib/sync'
-import { aiKeyConfigured, deleteAiKey, saveAiKey } from '../lib/media'
+import { aiKeyConfigured, deepseekConfigured, deleteAiKey, saveAiKey } from '../lib/media'
 import { exportEntriesJson, exportEntriesMarkdown } from '../lib/export'
 import {
   addCategory,
@@ -28,11 +28,14 @@ export function SettingsView() {
   const [categories, setCategories] = useState<string[]>([])
   const [newCategory, setNewCategory] = useState('')
   const [aiKey, setAiKey] = useState('')
+  const [deepseekKey, setDeepseekKey] = useState('')
+  const [deepseekReady, setDeepseekReady] = useState(false)
   const [aiConfigured, setAiConfigured] = useState(false)
   const configured = isSyncConfigured()
 
   async function refresh() {
     const current = await getCurrentUser()
+    if (current) void deepseekConfigured().then(setDeepseekReady).catch(() => setDeepseekReady(false))
     setUser(current)
     setAiConfigured(current ? await aiKeyConfigured().catch(() => false) : false)
     setLastSync(await getLastSyncAt())
@@ -58,7 +61,16 @@ export function SettingsView() {
       </section>
 
       <section className="panel">
-        <h2>音视频自动转写</h2>
+        <h2>DeepSeek 即时对话</h2>
+        <p className="muted">使用 DeepSeek Flash 流式反馈。只发送当前表达和最近几轮文字，默认简短回应；密钥加密保存在 NAS。</p>
+        <p>{deepseekReady ? 'DeepSeek 已配置' : '尚未配置 DeepSeek'}</p>
+        {user && <div className="row"><input type="password" autoComplete="off" aria-label="DeepSeek API 密钥" placeholder="输入 DeepSeek API 密钥" value={deepseekKey} onChange={(e) => setDeepseekKey(e.target.value)} /><button className="primary" disabled={busy || !deepseekKey.trim()} onClick={() => { setBusy(true); void saveAiKey(deepseekKey.trim(), 'deepseek').then(() => { setDeepseekKey(''); setDeepseekReady(true); setMessage('DeepSeek 已保存') }).catch((e: Error) => setMessage(e.message)).finally(() => setBusy(false)) }}>保存</button>{deepseekReady && <button className="ghost" onClick={() => { void deleteAiKey('deepseek').then(() => setDeepseekReady(false)).catch((e: Error) => setMessage(e.message)) }}>移除</button>}</div>}
+      </section>
+      <section className="panel">
+        <h2>电脑本地转写</h2><p className="muted">素材内点击「本机转写」，再在电脑运行项目的本地转写助手。助手复用已安装的字幕工具模型，只向 NAS 回传文稿。电脑休眠或助手未启动时，任务会等待。</p><p className="muted tiny">启动命令见 nas/README.md 的本机转写章节。助手只需登录自己的 NAS 账号，不需要对外开放电脑端口。</p>
+      </section>
+      <section className="panel">
+        <h2>可选的在线音视频转写</h2>
         <p className="muted">上传的文件保存在 NAS。你主动发起转写时，NAS 会把提取的音频发送到 OpenAI；原文件、原文和练习继续保存在 NAS。</p>
         <p className="muted">{aiConfigured ? '转写 API 密钥已配置。密钥只保存在 NAS，不会回显到浏览器。' : '尚未配置 OpenAI API 密钥。已有原文的素材仍可直接生成练习。'}</p>
         {user && <div className="row"><input type="password" autoComplete="off" value={aiKey} onChange={(event) => setAiKey(event.target.value)} placeholder="输入 OpenAI API 密钥" aria-label="OpenAI API 密钥" /><button type="button" className="primary" disabled={busy || !aiKey.trim()} onClick={() => { setBusy(true); void saveAiKey(aiKey.trim()).then(() => { setAiKey(''); setAiConfigured(true); setMessage('转写密钥已保存到 NAS') }).catch((error: Error) => setMessage(error.message)).finally(() => setBusy(false)) }}>保存密钥</button>{aiConfigured && <button type="button" className="ghost" onClick={() => { void deleteAiKey().then(() => { setAiConfigured(false); setMessage('已移除转写密钥') }).catch((error: Error) => setMessage(error.message)) }}>移除</button>}</div>}
