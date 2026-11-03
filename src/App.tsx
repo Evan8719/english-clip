@@ -15,7 +15,7 @@ import { DictionaryView } from './components/DictionaryView'
 import { PracticeView } from './components/PracticeView'
 import { LearningMethodsView } from './components/LearningMethodsView'
 
-interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number } }
+interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number; courseId?: string; episode?: number; timestamp?: number } }
 
 export default function App() {
   const [materialSession, setMaterialSession] = useState(0)

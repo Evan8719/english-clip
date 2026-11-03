@@ -1103,3 +1103,32 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .level-filters { scrollbar-width: none; }
 .level-filters::-webkit-scrollbar { display: none; }
+
+.course-entry { display: flex; align-items: center; justify-content: space-between; gap: 15px; width: 100%; border: 1px solid #aebfa9; background: #e7eee0; color: #244c38; border-radius: 12px; padding: 16px; margin-top: 14px; text-align: left; }
+.course-entry strong, .course-entry small { display: block; }
+.course-entry small { margin-top: 5px; color: var(--muted); }
+.course-entry > span:last-child { flex: none; font-size: .83rem; }
+.course-choose { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--muted); font-size: .85rem; }
+.course-choose select { flex: 1; min-width: 0; max-width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fffcf6; color: var(--ink); }
+
+
+.media-transcript { max-height: min(52vh, 560px); overflow-y: auto; overscroll-behavior-y: contain; border-block: 1px solid var(--line); margin-top: 12px; }
+
+.material-study { margin-block: 22px; padding-block: 16px; border-block: 1px solid var(--line); }
+.material-study .library-type-tabs { flex-wrap: wrap; margin-bottom: 15px; }
+.material-study p, .material-study li { font-size: .9rem; line-height: 1.7; }
+.material-study ul { padding-left: 20px; }
+.study-point, .study-question { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.study-point strong { font-family: Georgia, serif; font-size: 1.1rem; }
+.study-point blockquote, .material-notes blockquote { margin: 12px 0; border-left: 2px solid #a9b8a0; padding-left: 12px; color: var(--muted); font-size: .9rem; line-height: 1.7; }
+.study-point > div { display: flex; gap: 12px; flex-wrap: wrap; }
+.study-question summary { cursor: pointer; line-height: 1.7; }
+.material-notes label { display: block; font-size: .85rem; font-weight: 600; }
+.material-notes textarea { width: 100%; border: 1px solid var(--line); background: #fffcf6; padding: 12px; border-radius: 8px; margin-bottom: 10px; font: inherit; }
+.material-note { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.material-note p { white-space: pre-wrap; }
+.material-note small { color: var(--muted); }
+
+.media-study-jump { display: block; margin-top: 14px; }
+.material-study { scroll-margin-top: 22px; }
+@media (max-width: 760px) { .media-reader-head { margin-block: 16px; } .media-reader-head h2 { font-size: 1.3rem; margin: 10px 0; } .media-reader-head p { margin: 6px 0; font-size: .85rem; } }

@@ -1,4 +1,5 @@
 import { streamConversation } from './deepseek.mjs'
+import { generateStudyGuide } from './study-guide.mjs'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { once } from 'node:events'
@@ -19,7 +20,7 @@ function atomicJson(file, value) {
 
 export function makeExercises(transcript) {
   const lines = transcript.replace(/\r/g, '').split(/(?<=[.!?])\s+|\n+/).map((line) => line.trim()).filter((line) => line.length > 14)
-  const sampled = lines.slice(0, 30).filter((_, index) => index % Math.max(1, Math.ceil(lines.length / 8)) === 0).slice(0, 8)
+  const sampled = lines.filter((_, index) => index % Math.max(1, Math.ceil(lines.length / 8)) === 0).slice(0, 8)
   const exercises = sampled.map((line, index) => {
     const words = line.match(/[A-Za-z][A-Za-z'-]{3,}/g) || []
     const word = words.find((value) => !/^(this|that|with|from|have|your|they|were|about)$/i.test(value)) || words[0]
@@ -42,6 +43,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
   let index = existsSync(indexFile) ? JSON.parse(readFileSync(indexFile, 'utf8')) : {}
   let keys = existsSync(keysFile) ? JSON.parse(readFileSync(keysFile, 'utf8')) : {}
   const recentChat = new Map()
+  const guideJobs = new Set()
   const encryptionKey = createHash('sha256').update(secret).digest()
   const save = () => atomicJson(indexFile, index)
   const saveKeys = () => atomicJson(keysFile, keys)
@@ -56,8 +58,19 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
   for (const items of Object.values(index)) for (const item of Object.values(items)) {
     if (item.status === 'processing') { item.status = 'failed'; item.error = '服务重启中断了处理，请重新生成'; save() }
     if (item.status === 'transcribing-local') { item.status = 'queued-local'; save() }
+    if (item.guideStatus === 'processing') { item.guideStatus = 'failed'; item.guideError = '服务重启，请重新整理重点'; save() }
   }
   const reject = (res, status, message) => sendJson(res, status, { ok: false, message })
+
+  async function prepareGuide(item) {
+    const key = readKey(item.ownerId, 'deepseek')
+    if (!key || !item.transcript || item.kind === 'book' || guideJobs.has(item.id)) return
+    const transcript = item.transcript
+    guideJobs.add(item.id); item.guideStatus = 'processing'; item.guideError = ''; save()
+    try { const guide = await generateStudyGuide({ ...item, transcript }, key); if (item.transcript === transcript) { item.studyGuide = guide; item.guideStatus = 'ready' } }
+    catch (error) { item.guideStatus = 'failed'; item.guideError = error.message }
+    finally { guideJobs.delete(item.id); save() }
+  }
 
   function readKey(uid, provider = 'openai') {
     const encrypted = keys[provider === 'deepseek' ? `${uid}:deepseek` : uid]
@@ -106,6 +119,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
     }
     item.updatedAt = new Date().toISOString()
     save()
+    if (item.status === 'ready') void prepareGuide(item)
   }
 
   async function receiveFile(req, item) {
@@ -201,7 +215,15 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
     }
     if (path === '/api/media' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
-      return sendJson(res, 200, { ok: true, items: Object.values(bucket(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((item) => { const result = publicItem(item); if (item.kind === 'book') { delete result.chapters; result.chapterCount = item.chapters?.length || 0 } return result }) })
+      return sendJson(res, 200, { ok: true, items: Object.values(bucket(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((item) => {
+        const result = publicItem(item)
+        result.chapterCount = item.chapters?.length || 0
+        result.segmentCount = item.segments?.length || 0
+        result.exerciseCount = item.exercises?.length || 0
+        result.transcript = ''; result.exercises = []
+        delete result.chapters; delete result.segments; delete result.studyGuide; delete result.notes
+        return result
+      }) })
     }
     if (path === '/api/media' && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
@@ -221,15 +243,22 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       if (kind === 'book' && chapters.length) item.status = 'ready'
       bucket(user.id)[item.id] = item
       save()
+      if (kind === 'text' && transcript) void prepareGuide(item)
       return sendJson(res, 201, { ok: true, item: publicItem(item) })
     }
-    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local))?$/.exec(path)
+    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local|guide))?$/.exec(path)
     if (!match) return false
     const [, id, action] = match
     const item = user ? get(user.id, id) : Object.values(index).map((items) => items[id]).find(Boolean)
     if (!item) return reject(res, 404, '素材不存在')
     if (action === 'file' && (req.method === 'GET' || req.method === 'HEAD')) return serveFile(req, res, item, url)
     if (!user) return reject(res, 401, '未登录')
+    if (action === 'guide' && req.method === 'POST') {
+      if (!readKey(user.id, 'deepseek')) return reject(res, 409, '请先在设置中配置 DeepSeek')
+      if (!item.transcript || item.kind === 'book') return reject(res, 400, '请先为音视频生成原文')
+      await prepareGuide(item)
+      return sendJson(res, 200, { ok: true, item: publicItem(item) })
+    }
     if (action === 'local' && req.method === 'POST') {
       if (!item.extension || item.kind === 'book') return reject(res, 400, '请先上传音视频')
       const body = await readBody(req)
@@ -244,11 +273,13 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       } else if (body.error) { item.status = 'failed'; item.error = String(body.error).slice(0, 300) }
       else { if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '任务正在处理'); item.status = 'queued-local'; item.error = '' }
       item.updatedAt = new Date().toISOString(); save()
+      if (typeof body.transcript === 'string') void prepareGuide(item)
       return sendJson(res, 200, { ok: true, item: publicItem(item) })
     }
     if (action === 'file' && req.method === 'PUT') {
       if (item.extension) return reject(res, 409, '文件已经上传')
       await receiveFile(req, item)
+      if (item.transcript) void prepareGuide(item)
       return sendJson(res, 200, { ok: true, item: publicItem(item) })
     }
     if (action === 'process' && req.method === 'POST') {
@@ -270,12 +301,15 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       if (body.readingPosition && item.kind === 'book') item.readingPosition = { chapter: Math.max(0, Math.min(item.chapters.length - 1, Number(body.readingPosition.chapter) || 0)), paragraph: Math.max(0, Math.floor(Number(body.readingPosition.paragraph) || 0)) }
       if (typeof body.transcript === 'string') item.transcript = body.transcript.trim().slice(0, 200000)
       if (typeof body.title === 'string') item.title = body.title.trim().slice(0, 160) || item.title
+      if (Array.isArray(body.notes)) item.notes = body.notes.slice(0, 500).filter((note) => typeof note.text === 'string' && note.text.trim()).map((note) => ({ id: String(note.id || randomUUID()).slice(0, 64), text: note.text.trim().slice(0, 4000), at: Math.max(0, Math.min(86400, Number(note.at) || 0)), quote: String(note.quote || '').slice(0, 2000), createdAt: String(note.createdAt || new Date().toISOString()).slice(0, 40) }))
       if (typeof body.transcript === 'string') {
         item.exercises = item.transcript ? makeExercises(item.transcript) : []
         item.status = item.kind === 'book' || item.transcript ? 'ready' : (item.extension ? 'uploaded' : 'awaiting-file')
         item.segments = []
+        delete item.studyGuide; item.guideStatus = ''; item.guideError = ''
       }
       item.updatedAt = new Date().toISOString(); save()
+      if (typeof body.transcript === 'string') void prepareGuide(item)
       return sendJson(res, 200, { ok: true, item: publicItem(item) })
     }
     return reject(res, 405, '方法不允许')

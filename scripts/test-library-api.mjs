@@ -32,6 +32,7 @@ try {
   const status = (await api('/api/ai/status', token)).data
   assert.equal(status.deepseekConfigured, true); assert.equal(status.configured, false)
   assert.ok(!readFileSync(join(data, 'media', 'ai-keys.json'), 'utf8').includes('sk-test-deepseek-not-real'))
+  await api('/api/ai/key?provider=deepseek', token, 'DELETE')
   const audio = (await api('/api/media', token, 'POST', { title: 'Test audio', kind: 'audio' })).data.item
   const upload = await fetch(`http://127.0.0.1:${port}/api/media/${audio.id}/file`, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'X-File-Extension': 'mp3' }, body: 'ID3test' })
   assert.equal(upload.status, 200)
@@ -42,9 +43,15 @@ try {
   const complete = await api(`/api/media/${audio.id}/local`, token, 'POST', { transcript: 'I look forward to reading the book. It is an interesting story.', segments: [{ start: 0, end: 3, text: 'I look forward to reading the book.' }] })
   assert.equal(complete.data.item.status, 'ready'); assert.equal(complete.data.item.segments.length, 1)
   assert.ok(complete.data.item.exercises.length > 1)
+  const note = { id: 'test-note', at: 1.5, text: 'Remember this expression.', quote: 'I look forward to reading the book.' }
+  assert.equal((await api(`/api/media/${audio.id}`, token, 'PATCH', { notes: [note] })).data.item.notes[0].at, 1.5)
+  assert.equal((await api(`/api/media/${audio.id}`, token)).data.item.notes[0].text, note.text)
+  const summaries = (await api('/api/media', token)).data.items
+  assert.ok(summaries.every((item) => !item.segments && !item.notes && !item.transcript))
   const inviteCode = readFileSync(join(data, 'invite-code.txt'), 'utf8').trim()
   const other = await api('/api/auth/register', '', 'POST', { email: 'other@example.test', password: 'test-only-password', inviteCode })
   assert.equal((await api(`/api/media/${id}`, other.data.token)).status, 404)
+  assert.equal((await api(`/api/media/${audio.id}`, other.data.token, 'PATCH', { notes: [] })).status, 404)
   assert.equal((await api('/api/local/jobs', other.data.token)).data.items.length, 0)
   assert.equal((await api('/api/local/jobs')).status, 401)
   const res = new EventEmitter(); const chunks = []

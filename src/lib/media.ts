@@ -21,9 +21,17 @@ export interface MediaItem {
   readingPosition?: { chapter: number; paragraph: number }
   segments?: Array<{ start: number; end: number; text: string }>
   playbackPosition?: number
+  courseId?: string
+  episode?: number
+  sourceUrl?: string
+  notes?: Array<{ id: string; text: string; at: number; quote: string; createdAt: string }>
+  studyGuide?: { summary: string; goals: string[]; points: Array<{ title: string; explanation: string; example: string; start?: number; segmentIndex?: number }>; questions: Array<{ question: string; answer: string }> }
+  guideStatus?: 'processing' | 'ready' | 'failed' | ''
+  guideError?: string
   source: string
   transcript: string
   exercises: Exercise[]
+  exerciseCount?: number
   status: 'awaiting-file' | 'uploaded' | 'processing' | 'ready' | 'failed' | 'queued-local' | 'transcribing-local'
   error: string
   bytes: number

@@ -62,7 +62,7 @@ export function SettingsView() {
 
       <section className="panel">
         <h2>DeepSeek 即时对话</h2>
-        <p className="muted">使用 DeepSeek Flash 流式反馈。只发送当前表达和最近几轮文字，默认简短回应；密钥加密保存在 NAS。</p>
+        <p className="muted">使用 DeepSeek Flash 流式反馈。对话发送当前表达和最近几轮文字；素材原文可自动整理重点和理解练习。密钥加密保存在 NAS。</p>
         <p>{deepseekReady ? 'DeepSeek 已配置' : '尚未配置 DeepSeek'}</p>
         {user && <div className="row"><input type="password" autoComplete="off" aria-label="DeepSeek API 密钥" placeholder="输入 DeepSeek API 密钥" value={deepseekKey} onChange={(e) => setDeepseekKey(e.target.value)} /><button className="primary" disabled={busy || !deepseekKey.trim()} onClick={() => { setBusy(true); void saveAiKey(deepseekKey.trim(), 'deepseek').then(() => { setDeepseekKey(''); setDeepseekReady(true); setMessage('DeepSeek 已保存') }).catch((e: Error) => setMessage(e.message)).finally(() => setBusy(false)) }}>保存</button>{deepseekReady && <button className="ghost" onClick={() => { void deleteAiKey('deepseek').then(() => setDeepseekReady(false)).catch((e: Error) => setMessage(e.message)) }}>移除</button>}</div>}
       </section>

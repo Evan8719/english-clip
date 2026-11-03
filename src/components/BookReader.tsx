@@ -4,7 +4,7 @@ import { getLemma } from '../lib/lexicon'
 import { lookupZhGloss } from '../lib/zhGloss'
 import { cacheMaterial, LEVELS } from '../lib/books'
 
-interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number } }
+interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number; courseId?: string; episode?: number; timestamp?: number } }
 export function BookReader({ item, onBack, onCapture, onPractice }: { item: MediaItem; onBack: () => void; onCapture: (seed: CaptureSeed) => void; onPractice: (text: string, title: string) => void }) {
   const chapters = item.chapters || []
   const [chapter, setChapter] = useState(Math.min(item.readingPosition?.chapter ?? (/gutenberg/i.test(chapters[0]?.title || '') && chapters.length > 1 ? 1 : 0), Math.max(0, chapters.length - 1)))

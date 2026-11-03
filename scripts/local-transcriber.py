@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--server', default='https://clip.evenhoo.top:8443')
     parser.add_argument('--email', default='')
     parser.add_argument('--file', type=Path, help='Offline verification: transcribe this file only')
+    parser.add_argument('--batch-manifest', type=Path, help='Offline batch: transcribe untranscribed audio in a prepared private manifest')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--once', action='store_true')
     args = parser.parse_args()
@@ -49,7 +50,8 @@ def main():
                 samples = np.frombuffer(audio.readframes(audio.getnframes()), dtype=np.int16).astype(np.float32) / 32768
         def decode():
             parts, info = model.transcribe(samples, language='en', beam_size=3, vad_filter=True)
-            return [{'start': round(s.start, 3), 'end': round(s.end, 3), 'text': s.text.strip()} for s in parts]
+            duration = len(samples) / 16000
+            return [{'start': round(s.start, 3), 'end': round(min(s.end, duration), 3), 'text': s.text.strip()} for s in parts if s.start < duration and s.end > s.start and s.text.strip()]
         try: segments = decode()
         except RuntimeError:
             if device != 'cuda': raise
@@ -60,6 +62,27 @@ def main():
             segments = decode()
         return {'transcript': ' '.join(s['text'] for s in segments), 'segments': segments}
 
+    if args.batch_manifest:
+        if not args.output: raise ValueError('--output must name a private result directory')
+        args.output.mkdir(parents=True, exist_ok=True)
+        manifest = json.loads(args.batch_manifest.read_text(encoding='utf8'))
+        jobs = [item for item in manifest['items'] if item['kind'] in ('audio', 'video') and not item.get('transcript')]
+        for index, item in enumerate(jobs):
+            target = args.output / (item['contentHash'] + '.json')
+            if target.exists():
+                saved = json.loads(target.read_text(encoding='utf8'))
+                if saved.get('contentHash') == item['contentHash'] and saved.get('transcript') and saved.get('segments'):
+                    print(f'Batch {index+1}/{len(jobs)} already complete', flush=True)
+                    continue
+            print(f'Batch {index+1}/{len(jobs)}: {item["title"]}', flush=True)
+            result = transcribe(args.batch_manifest.parent / item['file'])
+            if not result['transcript']: raise RuntimeError('No speech recognized: ' + item['title'])
+            result.update(contentHash=item['contentHash'], title=item['title'], device=device)
+            tmp = target.with_suffix('.tmp')
+            tmp.write_text(json.dumps(result, ensure_ascii=False), encoding='utf8'); tmp.replace(target)
+            print(json.dumps({'completed': index+1, 'total':len(jobs), 'segments':len(result['segments'])}), flush=True)
+        print(json.dumps({'batchComplete':True,'total':len(jobs)}), flush=True)
+        return
     if args.file:
         result = transcribe(args.file)
         if not result['transcript']: raise RuntimeError('No speech recognized')
