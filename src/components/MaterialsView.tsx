@@ -44,6 +44,8 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   const [pointA, setPointA] = useState<number | null>(null)
   const [pointB, setPointB] = useState<number | null>(null)
   const [time, setTime] = useState(0)
+  const [dockHeight, setDockHeight] = useState(0)
+  const playerDock = useRef<HTMLDivElement>(null)
   const player = useRef<HTMLMediaElement>(null)
   const selectToken = useRef(0)
   const lastPositionSave = useRef(0)
@@ -76,6 +78,13 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   const exercise = exercises[exerciseIndex]
   const streamUrl = selected?.type === 'starter' ? `${packBase}${selected.item.audio}` : selected?.item.streamUrl ? `${apiBase}${selected.item.streamUrl}` : ''
   const kind = selected?.type === 'starter' ? 'audio' : selected?.item.kind
+  useEffect(() => {
+    const dock = playerDock.current
+    if (!dock) { setDockHeight(0); return }
+    const observer = new ResizeObserver(() => setDockHeight(Math.ceil(dock.getBoundingClientRect().height)))
+    observer.observe(dock)
+    return () => observer.disconnect()
+  }, [selected?.item.id, streamUrl])
   function choose(next: Selection | null) {
     const token = ++selectToken.current
     setLineIndex(0); setExerciseIndex(0); setAnswerOpen(false); setLoop(false); setPointA(null); setPointB(null); setTime(0)
@@ -131,12 +140,12 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
       {starter.filter(() => !level || level === 'A2').filter((item) => `${item.title} ${item.titleZh}`.toLowerCase().includes(query.toLowerCase())).map((item) => <button type="button" className="media-list-row" key={item.id} onClick={() => choose({ type: 'starter', item })}><span className="media-symbol">♫</span><span><strong>{item.titleZh}</strong><span className="level-badge">A2 · 来源参考</span><small>{item.title} · {stamp(item.durationSeconds)}</small></span><span className="media-arrow">›</span></button>)}
       </div><p className="muted tiny">内置素材保留原课来源，用于教育学习与非商业使用。</p></details>
       <p className="muted tiny">等级为文本估算或来源参考，可在素材内调整。</p>
-    </div> : <div className="media-reader">
+    </div> : <div className="media-reader" style={{ '--media-player-height': `${dockHeight}px` } as React.CSSProperties}>
       <button className="redesign-text-button" onClick={() => choose(null)}>← 返回素材库</button>
       <div className="media-reader-head"><div><span className="redesign-tag">{selected.type === 'starter' ? '内置素材' : '我的素材'}</span><h2>{selected.type === 'starter' ? selected.item.titleZh : selected.item.title}</h2><p>{selected.type === 'starter' ? selected.item.provider : selected.item.source || '私人素材'}</p></div>{selected.type === 'starter' && <a href={selected.item.sourceUrl} target="_blank" rel="noreferrer">查看原课 ↗</a>}</div>
       <label className="material-level-edit">素材等级 <select value={selected.type === 'mine' ? selected.item.level || '' : 'A2'} disabled={selected.type === 'starter'} onChange={(event) => { if (selected.type === 'mine') void patchMedia(selected.item.id, { level: event.target.value }).then((item) => { setSelected({ type: 'mine', item }); void reloadMine() }).catch((error: Error) => setMessage(error.message)) }}><option value="">待评估</option>{LEVELS.map((l) => <option key={l}>{l}</option>)}</select> <small>参考等级，可按实际体验调整</small></label>
+      {streamUrl && <div ref={playerDock} className="media-player-dock" role="region" aria-label="固定播放区">{kind === 'video' ? <video key={selected.item.id} ref={player as React.RefObject<HTMLVideoElement>} className="media-video" controls playsInline src={streamUrl} onTimeUpdate={onTimeUpdate} onPause={savePlayback} onLoadedMetadata={resumePlayback} /> : <audio key={selected.item.id} ref={player as React.RefObject<HTMLAudioElement>} className="media-audio" controls src={streamUrl} onTimeUpdate={onTimeUpdate} onPause={savePlayback} onLoadedMetadata={resumePlayback} />}</div>}
       <div className="media-reader-layout"><div>
-        {streamUrl && (kind === 'video' ? <video key={selected.item.id} ref={player as React.RefObject<HTMLVideoElement>} className="media-video" controls src={streamUrl} onTimeUpdate={onTimeUpdate} onPause={savePlayback} onLoadedMetadata={resumePlayback} /> : <audio key={selected.item.id} ref={player as React.RefObject<HTMLAudioElement>} className="media-audio" controls src={streamUrl} onTimeUpdate={onTimeUpdate} onPause={savePlayback} onLoadedMetadata={resumePlayback} />)}
         {streamUrl && <div className="media-loop"><span>播放位置 {stamp(time)}</span><button onClick={() => setPointA(player.current?.currentTime ?? 0)}>A 点 {pointA === null ? '' : stamp(pointA)}</button><button onClick={() => setPointB(player.current?.currentTime ?? 0)}>B 点 {pointB === null ? '' : stamp(pointB)}</button><button className={loop ? 'active' : ''} disabled={pointA === null || pointB === null || pointB <= pointA} onClick={() => setLoop(!loop)}>{loop ? '停止循环' : '区间循环'}</button><select aria-label="播放速度" defaultValue="1" onChange={(event) => { if (player.current) player.current.playbackRate = Number(event.target.value) }}><option value="0.75">0.75×</option><option value="1">1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select></div>}
         {selected.type === 'mine' && ['queued-local', 'transcribing-local'].includes(selected.item.status) && <p className="redesign-message">{selected.item.status === 'queued-local' ? '等待电脑本机转写。请启动本地转写助手，电脑休眠时任务会等待。' : '电脑正在转写，完成后自动更新原文和练习。'}</p>}
         {selected.type === 'mine' && selected.item.status === 'failed' && <p className="redesign-message">{selected.item.error}</p>}

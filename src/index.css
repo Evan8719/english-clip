@@ -1130,5 +1130,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .material-note small { color: var(--muted); }
 
 .media-study-jump { display: block; margin-top: 14px; }
-.material-study { scroll-margin-top: 22px; }
+.media-player-dock { position: sticky; top: 0; z-index: 12; padding: 8px 0; background: #f3efe6; border-bottom: 1px solid var(--line); }
+.media-player-dock .media-video { display: block; max-height: min(38dvh, 420px); object-fit: contain; }
+.media-player-dock .media-audio { display: block; margin: 0; width: 100%; }
+.media-reader .material-study, .media-reader .media-transcript { scroll-margin-top: calc(var(--media-player-height, 0px) + 14px); }
 @media (max-width: 760px) { .media-reader-head { margin-block: 16px; } .media-reader-head h2 { font-size: 1.3rem; margin: 10px 0; } .media-reader-head p { margin: 6px 0; font-size: .85rem; } }
