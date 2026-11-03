@@ -26,6 +26,7 @@ data/secret.key
 data/invite-code.txt
 nas/data/
 data/cache/
+data/media/
 .vercel
 
 # Editor directories and files

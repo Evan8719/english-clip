@@ -11,9 +11,9 @@
 | 对外地址 | **https://clip.evenhoo.top:8443** （已上线，证书 ACME 自动续期） |
 | 服务位置 | NAS 宿主机 `$APP_ROOT/` |
 | 监听 | `127.0.0.1:4188`（只允许 Lucky 反代进来，不直接对局域网/公网开端口） |
-| 数据 | `data/store.json`（全部账号 + 词条） |
+| 数据 | `data/store.json`（账号 + 词条），`data/media/`（私人素材文件、原文、练习与加密 AI 密钥） |
 | 守护 | Hermes 定时任务 `<KEEPALIVE_JOB_ID>`（每 5 分钟健康检查 + 自动拉活） |
-| 代码 | 仓库 `nas/` 目录（`server.mjs` / `run.sh` / `keepalive.sh` / `import.mjs` / `Dockerfile`） |
+| 代码 | 仓库 `nas/` 目录（`server.mjs` / `media.mjs` / `run.sh` / `keepalive.sh` / `import.mjs` / `Dockerfile`） |
 
 ## 架构
 
@@ -45,6 +45,7 @@
 | `$APP_ROOT/web/` | 前端静态产物 |
 | `$APP_ROOT/config.env` | 本机绑定配置（**不在仓库里**） |
 | `$APP_ROOT/data/store.json` | **全部数据**（要备份的就是它） |
+| `$APP_ROOT/data/media/` | 上传的音视频、素材原文、练习卡和每账号加密的 AI 密钥；程序升级不能覆盖 |
 | `$APP_ROOT/data/secret.key` | Token 签名密钥（0600，丢了所有人需重新登录） |
 | `$APP_ROOT/data/invite-code.txt` | 注册第二个账号所需邀请码 |
 | `$APP_ROOT/logs/server.log` | 日志（超 5MB 自动轮转） |
@@ -120,11 +121,11 @@ $APP_ROOT/run.sh
 ## 备份
 
 ```sh
-cp $APP_ROOT/data/store.json \
-   /path/to/backup/english-clip-$(date +%F).json
+tar -C "$APP_ROOT" -czf \
+  /path/to/backup/english-clip-data-$(date +%F).tar.gz data
 ```
 
-`data/` 目录整体拷走即完整备份。另有接口 `GET /api/export`（需登录）直接下载当前账号 JSON。
+`data/` 目录整体拷走才是完整备份（包括 `media/`）。单独的 `store.json` 只覆盖词条与账号，不包含上传素材。另有接口 `GET /api/export`（需登录）直接下载当前账号词条 JSON。
 
 ## 换机器 / 恢复
 
@@ -145,6 +146,14 @@ cp $APP_ROOT/data/store.json \
 | GET | `/api/entries` | 拉全量词条（Bearer） |
 | POST | `/api/entries` | `{entries:[...]}` upsert，按 `updatedAt` 取新（Bearer） |
 | GET | `/api/export` | 下载 JSON 备份（Bearer） |
+| GET/POST | `/api/media` | 列出 / 创建当前账号的素材（Bearer） |
+| GET/PATCH | `/api/media/:id` | 读取 / 修订标题及原文，自动更新练习（Bearer） |
+| PUT | `/api/media/:id/file` | 流式上传音视频，不超过 1 GB（Bearer） |
+| GET | `/api/media/:id/file` | 有效期一小时的签名播放链接，支持 Range |
+| POST | `/api/media/:id/process` | 有原文则生成练习；没有原文则转写音频后生成（Bearer） |
+| GET | `/api/ai/status` | 当前账号的 AI 密钥是否配置（Bearer，不回显密钥） |
+| POST/DELETE | `/api/ai/key` | 保存 / 移除当前账号加密的 OpenAI API 密钥（Bearer） |
+| POST | `/api/ai/chat` | 带词英语对话，限量上下文（Bearer） |
 
 认证用 Bearer Token（localStorage），**不用 Cookie**。跨域白名单见 `EC_ALLOWED_ORIGINS`。
 
@@ -159,6 +168,12 @@ cp $APP_ROOT/data/store.json \
 | `EC_ALLOWED_ORIGINS` | Vercel 站 + clip 站 | 允许的跨域来源 |
 
 绑定地址读 `config.env`（同目录），改完 `EC_RESTART=1 ./run.sh` 生效。
+
+## 私人素材与在线处理
+
+素材文件、原文及练习保存在 NAS 的 `data/media/`，按登录账号隔离。带原文的素材上传后立即生成跟读、听写和复述卡；没有原文的音视频可在「设置」中配置 OpenAI API 密钥后转写。密钥以服务端 `data/secret.key` 派生的密钥加密，浏览器只看得到是否配置。转写时后端用 FFmpeg 提取并切分音轨，将片段发送到 OpenAI 的 `gpt-transcribe`；原音视频仍保存在 NAS。OpenAI 对[文件转写](https://developers.openai.com/api/docs/guides/speech-to-text)有 25 MB 单片限制，切分可避免单次请求超限。AI 文字对话只发送本次选中的表达和最近几轮输入，服务端不要求远端保存会话。
+
+上传后的视频和音频通过限时签名链接播放，支持浏览器按需读取片段。离线时词条记录、翻卡和内置词典仍可使用；私人素材上传、同步和在线 AI 需要网络与 NAS 可达。部署新版后端时，`server.mjs` 与 `media.mjs` 必须作为同一版本一起替换，重启后验证素材接口；旧前端版本仍可与新增的素材数据目录共存。
 
 ## 未做 / 局限
 

@@ -10,15 +10,19 @@ interface Props {
   onUpdated: () => void
   onDelete: (entry: Entry) => void
   lexiconStatus: string
+  onCapture: () => void
+  onMaterials: () => void
+  onDictionary: () => void
 }
 
-export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus }: Props) {
+export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary }: Props) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
   const [source, setSource] = useState('全部来源')
   const [kind, setKind] = useState<EntryKind | 'all'>('all')
   const [order, setOrder] = useState<'recent' | 'alphabetical'>('recent')
   const [adjustOpen, setAdjustOpen] = useState(false)
+  const [selectedId, setSelectedId] = useState('')
 
   const categoriesShown = useMemo(() => categoriesForFilter(categories, entries), [categories, entries])
   const sources = useMemo(() => category === '全部' ? [] : listSources(entries, category), [entries, category])
@@ -38,17 +42,18 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
       : result.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }, [entries, query, category, source, kind, order])
 
+  const selected = filtered.find((entry) => entry.id === selectedId) || filtered[0]
+
   return (
-    <div className="page">
-      <header className="page-header brand home-header">
-        <p className="brand-mark">English Clip</p>
-        <h1>英语剪贴本</h1>
-        <p className="lede">记下有用的词，想起来再翻。无催促。</p>
+    <div className="redesign-page redesign-home">
+      <header className="redesign-heading home-heading">
+        <div><div className="redesign-subtabs"><button className="active">词句</button><button onClick={onMaterials}>素材</button><button onClick={onDictionary}>词典</button></div><h1>我的本子</h1><p>把遇见的表达，慢慢变成自己的。</p></div>
+        <button type="button" className="redesign-primary home-record" onClick={onCapture}><span>＋</span> 记录新表达</button>
       </header>
 
       <div className="home-controls">
         <div className="home-control-main">
-          <input className="home-search" type="search" aria-label="搜索已记录的词句" placeholder="搜索词句、来源或笔记" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="home-search" type="search" aria-label="搜索已记录的词句" placeholder="搜索词句、释义或来源" value={query} onChange={(event) => setQuery(event.target.value)} />
           <button type="button" className={adjustOpen ? 'chip active' : 'chip'} aria-expanded={adjustOpen} aria-controls="home-adjust" onClick={() => setAdjustOpen((value) => !value)}>调整</button>
         </div>
         <div className="home-category-scroll" aria-label="按来源类型筛选">
@@ -69,17 +74,17 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
       </div>
 
       <div className="home-list-head">
-        <div><h2>我的词条</h2><p className="muted tiny">{filtered.length} 条 · {order === 'recent' ? '最近记录在前' : '按字母排列'} · 点卡片翻看释义</p></div>
+        <div><h2>词句</h2><p className="muted tiny">{filtered.length} 条 · {order === 'recent' ? '最近记录在前' : '按字母排列'} · 点卡片翻看释义</p></div>
         {lexiconStatus && <span className="muted tiny">{lexiconStatus}</span>}
       </div>
       {filtered.length === 0 ? <div className="home-empty panel">
-        <p>{entries.length ? '没有找到符合条件的词句。' : '本子里还没有词句。看到想记的表达，就点底栏的「＋」。'}</p>
+        <p>{entries.length ? '没有找到符合条件的词句。' : '本子里还没有词句。看到想记的表达，就点上方的「记录新表达」。'}</p>
         {entries.length > 0 && <button type="button" className="chip" onClick={() => { setQuery(''); setCategory('全部'); setSource('全部来源'); setKind('all') }}>清除筛选</button>}
-      </div> : <div className="home-grid">
-        {filtered.map((entry) => <div key={entry.id} className={entry.kind === 'sentence' ? 'home-grid-item sentence' : 'home-grid-item'}>
+      </div> : <div className="redesign-home-layout"><div className="home-grid">
+        {filtered.map((entry) => <div key={entry.id} onClick={() => setSelectedId(entry.id)} className={entry.kind === 'sentence' ? 'home-grid-item sentence' : 'home-grid-item'}>
           <EntryCard key={entry.updatedAt} entry={entry} compact onEdit={() => onEdit(entry)} onUpdated={onUpdated} onDelete={() => onDelete(entry)} />
         </div>)}
-      </div>}
+      </div><aside className="redesign-detail">{selected && <><span className="redesign-tag">{selected.kind === 'word' ? '单词' : selected.kind === 'phrase' ? '短语' : '句子'} · {selected.category || '其他'}</span><h2>{selected.text}</h2>{selected.enrichment?.phonetic && <p>{selected.enrichment.phonetic}</p>}{selected.enrichment?.definitionsZh?.map((line) => <p className="detail-meaning" key={line}>{line}</p>)}{selected.enrichment?.definitions?.slice(0, 2).map((line) => <p className="detail-definition" key={line}>{line}</p>)}{selected.context && <div className="detail-context"><small>原句语境</small><p>{selected.context}</p></div>}{selected.source && <p className="detail-source">来源 · {selected.source}</p>}<button className="redesign-secondary" onClick={() => onEdit(selected)}>编辑这条记录</button></>}</aside></div>}
     </div>
   )
 }

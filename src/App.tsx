@@ -10,13 +10,18 @@ import { HomeView } from './components/HomeView'
 import { ReviewView } from './components/ReviewView'
 import { MaterialsView } from './components/MaterialsView'
 import { SettingsView } from './components/SettingsView'
+import { DictionaryView } from './components/DictionaryView'
+import { PracticeView } from './components/PracticeView'
+
+interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string }
 
 export default function App() {
   const [tab, setTab] = useState<TabId>('home')
   const [entries, setEntries] = useState<Entry[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [captureOpen, setCaptureOpen] = useState(false)
-  const [captureSeed, setCaptureSeed] = useState('')
+  const [captureSeed, setCaptureSeed] = useState<CaptureSeed>({ text: '' })
+  const [practiceSeed, setPracticeSeed] = useState<{ text: string; title: string } | null>(null)
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
   const [lexiconReady, setLexiconReady] = useState(false)
   const [lexiconError, setLexiconError] = useState('')
@@ -42,7 +47,7 @@ export default function App() {
     }
   }, [refresh])
 
-  function openCreate(seed = '') {
+  function openCreate(seed: CaptureSeed = { text: '' }) {
     setEditingEntry(null)
     setCaptureSeed(seed)
     setCaptureOpen(true)
@@ -50,7 +55,7 @@ export default function App() {
 
   function openEdit(entry: Entry) {
     setEditingEntry(entry)
-    setCaptureSeed('')
+    setCaptureSeed({ text: '' })
     setCaptureOpen(true)
   }
 
@@ -69,8 +74,10 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <main className="main">
+    <div className="redesign-shell">
+      <header className="redesign-mobile-header"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><strong>English Clip</strong></div><button type="button" onClick={() => setTab('settings')} aria-label="设置">设置</button></header>
+      <div className="redesign-layout"><aside className="redesign-rail"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><span><strong>English Clip</strong><small>英语剪贴本</small></span></div><button className="redesign-primary rail-capture" onClick={() => openCreate()}>＋ 记录新表达</button><nav aria-label="桌面主导航"><button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>▤　我的本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>◇　复习</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>◉　开口练</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}>♫　素材库</button><button className={tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('dictionary')}>Aa　词典</button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>⚙　设置</button></nav><p className="rail-foot">本地记录 · NAS 同步<br />记下来，想起时再翻。</p></aside>
+      <main className="redesign-workspace">
         {tab === 'home' && (
           <HomeView
             entries={entries}
@@ -79,6 +86,9 @@ export default function App() {
             onUpdated={() => void refresh()}
             onDelete={handleDelete}
             lexiconStatus={lexiconReady ? '' : lexiconError ? '本地词库暂未加载' : '词库加载中…'}
+            onCapture={() => openCreate()}
+            onMaterials={() => setTab('materials')}
+            onDictionary={() => setTab('dictionary')}
           />
         )}
         {tab === 'review' && (
@@ -90,22 +100,22 @@ export default function App() {
             onHome={() => setTab('home')}
           />
         )}
-        {tab === 'materials' && <MaterialsView />}
+        {tab === 'materials' && <MaterialsView onCapture={openCreate} onPractice={(text, title) => { setPracticeSeed({ text, title }); setTab('practice') }} onSettings={() => setTab('settings')} />}
+        {tab === 'dictionary' && <DictionaryView onCapture={openCreate} />}
+        {tab === 'practice' && <PracticeView entries={entries} seed={practiceSeed} onCapture={openCreate} />}
         {tab === 'settings' && <SettingsView />}
       </main>
-
-      <nav className="tabbar" aria-label="主导航">
-        <button type="button" className={tab === 'home' ? 'tab active' : 'tab'} onClick={() => setTab('home')}>首页</button>
-        <button type="button" className={tab === 'review' ? 'tab active' : 'tab'} onClick={() => setTab('review')}>复习</button>
-        <button type="button" className="tab tab-capture" aria-label="记录新词句" onClick={() => openCreate()}>+</button>
-        <button type="button" className={tab === 'materials' ? 'tab active' : 'tab'} onClick={() => setTab('materials')}>素材</button>
-        <button type="button" className={tab === 'settings' ? 'tab active' : 'tab'} onClick={() => setTab('settings')}>设置</button>
-      </nav>
+      </div>
+      <nav className="redesign-mobile-nav" aria-label="手机主导航"><button className={tab === 'home' || tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('home')}>本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>复习</button><button className="redesign-nav-plus" aria-label="记录新词句" onClick={() => openCreate()}>＋</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => setTab('materials')}>素材</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>开口练</button></nav>
 
       <CaptureModal
         open={captureOpen}
         entry={editingEntry}
-        initialText={captureSeed}
+        initialText={captureSeed.text}
+        initialContext={captureSeed.context}
+        initialCategory={captureSeed.category}
+        initialSource={captureSeed.source}
+        initialSourceDetail={captureSeed.sourceDetail}
         entries={entries}
         onClose={() => {
           setCaptureOpen(false)

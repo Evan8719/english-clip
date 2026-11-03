@@ -28,6 +28,7 @@ import {
 } from 'node:fs'
 import { extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createMediaApi } from './media.mjs'
 
 const __dirname = resolve(fileURLToPath(import.meta.url), '..')
 const ROOT = resolve(__dirname, '..')
@@ -171,8 +172,8 @@ function applyCors(req, res) {
     res.setHeader('Vary', 'Origin')
     res.setHeader('Access-Control-Allow-Credentials', 'true')
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-File-Extension')
   res.setHeader('Access-Control-Max-Age', '86400')
 }
 
@@ -217,6 +218,7 @@ const bearer = (req) => {
 }
 
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
+const mediaApi = createMediaApi({ dataDir: DATA_DIR, secret: SECRET, sendJson })
 
 /* ── 认证限流（防爆破）───────────────────────────────── */
 
@@ -378,6 +380,11 @@ async function handleApi(req, res, url) {
   }
 
   const user = readToken(bearer(req))
+
+  if (path.startsWith('/api/media') || path.startsWith('/api/ai/')) {
+    const handled = await mediaApi.handle(req, res, url, user, readBody)
+    if (handled !== false) return
+  }
 
   if (path === '/api/auth/me' && req.method === 'GET') {
     if (!user) return sendJson(res, 401, { ok: false, message: '未登录' })

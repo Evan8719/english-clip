@@ -55,6 +55,13 @@ function getToken(): string {
   }
 }
 
+export function authorizedApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers)
+  const token = getToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  return fetch(`${API_BASE}${path}`, { ...init, headers, cache: 'no-store' })
+}
+
 async function call(
   path: string,
   options: { method?: string; body?: unknown; token?: string } = {},

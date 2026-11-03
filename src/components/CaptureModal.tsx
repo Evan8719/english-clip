@@ -30,6 +30,10 @@ interface Props {
   open: boolean
   entry?: Entry | null
   initialText?: string
+  initialContext?: string
+  initialCategory?: string
+  initialSource?: string
+  initialSourceDetail?: string
   entries?: Entry[]
   onClose: () => void
   onSave: (input: EntryFormInput) => Promise<void>
@@ -39,6 +43,10 @@ export function CaptureModal({
   open,
   entry = null,
   initialText = '',
+  initialContext = '',
+  initialCategory = '',
+  initialSource = '',
+  initialSourceDetail = '',
   entries = [],
   onClose,
   onSave,
@@ -90,16 +98,17 @@ export function CaptureModal({
     }
 
     setText(initialText)
-    setContext('')
+    setContext(initialContext)
     setNote('')
-    setSource('')
-    setSourceDetail('')
+    setSource(initialSource)
+    setSourceDetail(initialSourceDetail)
     setMySentence('')
     setKind(detectKind(initialText || 'word'))
     setEnrichment(undefined)
-    setShowMore(false)
-    void getLastCategory().then((c) => setCategory(normalizeCategory(c)))
-  }, [open, entry, initialText])
+    setShowMore(Boolean(initialContext))
+    if (initialCategory) setCategory(normalizeCategory(initialCategory))
+    else void getLastCategory().then((c) => setCategory(normalizeCategory(c)))
+  }, [open, entry, initialText, initialContext, initialCategory, initialSource, initialSourceDetail])
 
   useEffect(() => {
     if (!open || editing) return

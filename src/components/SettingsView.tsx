@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { SyncUser as User } from '../lib/sync'
+import { aiKeyConfigured, deleteAiKey, saveAiKey } from '../lib/media'
 import { exportEntriesJson, exportEntriesMarkdown } from '../lib/export'
 import {
   addCategory,
@@ -26,10 +27,14 @@ export function SettingsView() {
   const [busy, setBusy] = useState(false)
   const [categories, setCategories] = useState<string[]>([])
   const [newCategory, setNewCategory] = useState('')
+  const [aiKey, setAiKey] = useState('')
+  const [aiConfigured, setAiConfigured] = useState(false)
   const configured = isSyncConfigured()
 
   async function refresh() {
-    setUser(await getCurrentUser())
+    const current = await getCurrentUser()
+    setUser(current)
+    setAiConfigured(current ? await aiKeyConfigured().catch(() => false) : false)
     setLastSync(await getLastSyncAt())
     setCategories(await listCategories())
   }
@@ -50,6 +55,14 @@ export function SettingsView() {
         <p className="muted">
           用 Safari 打开线上地址 → 分享 →「添加到主屏幕」。之后点图标就能用，和「小积分」一样。
         </p>
+      </section>
+
+      <section className="panel">
+        <h2>音视频自动转写</h2>
+        <p className="muted">上传的文件保存在 NAS。你主动发起转写时，NAS 会把提取的音频发送到 OpenAI；原文件、原文和练习继续保存在 NAS。</p>
+        <p className="muted">{aiConfigured ? '转写 API 密钥已配置。密钥只保存在 NAS，不会回显到浏览器。' : '尚未配置 OpenAI API 密钥。已有原文的素材仍可直接生成练习。'}</p>
+        {user && <div className="row"><input type="password" autoComplete="off" value={aiKey} onChange={(event) => setAiKey(event.target.value)} placeholder="输入 OpenAI API 密钥" aria-label="OpenAI API 密钥" /><button type="button" className="primary" disabled={busy || !aiKey.trim()} onClick={() => { setBusy(true); void saveAiKey(aiKey.trim()).then(() => { setAiKey(''); setAiConfigured(true); setMessage('转写密钥已保存到 NAS') }).catch((error: Error) => setMessage(error.message)).finally(() => setBusy(false)) }}>保存密钥</button>{aiConfigured && <button type="button" className="ghost" onClick={() => { void deleteAiKey().then(() => { setAiConfigured(false); setMessage('已移除转写密钥') }).catch((error: Error) => setMessage(error.message)) }}>移除</button>}</div>}
+        {!user && <p className="muted tiny">登录 NAS 账号后可以配置。</p>}
       </section>
 
       <section className="panel">
