@@ -773,30 +773,26 @@ code {
 
 .home-grid-item { min-width: 0; }
 .home-grid .flip-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(112px, 31%);
-  align-items: stretch;
-  gap: 0.65rem;
   min-width: 0;
-  padding: 0.75rem 0.8rem;
+  padding: 0.85rem 1rem;
 }
-.home-grid .flip-inner { min-height: 70px; align-self: start; }
+.home-grid .flip-inner { min-height: 95px; }
 .home-grid .flip-inner:not(.flipped) .flip-back,
 .home-grid .flip-inner.flipped .flip-front { position: absolute; inset: 0; }
-.home-grid .headword { font-size: clamp(1.4rem, 4.7vw, 1.8rem); }
-.home-grid .flip-hint { margin-top: 0.45rem; }
+.home-grid .headword { font-size: clamp(1.6rem, 5.2vw, 2.05rem); }
+.home-grid .flip-face .meta-line { margin-top: 0.5rem; }
+.home-grid .flip-hint { margin-top: 0.65rem; }
 .home-grid .card-context-preview {
-  display: -webkit-box;
+  display: block;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  margin: 0.3rem 0 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 0.4rem 0 0;
   color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.35;
+  font-size: 0.82rem;
+  font-style: italic;
 }
 .home-grid .card-actions {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -804,45 +800,22 @@ code {
   gap: 0.3rem;
   min-width: 0;
   margin: 0;
-  padding: 0.45rem 0 0;
+  padding: 0.55rem 0 0;
   border-top: 1px solid var(--line);
 }
-.card-side-meta {
-  display: grid;
-  align-content: start;
-  gap: 0.2rem;
-  min-width: 0;
-  padding-left: 0.6rem;
-  border-left: 1px solid var(--line);
-  font-size: 0.76rem;
-  line-height: 1.35;
-}
-.card-side-source, .card-side-detail { overflow-wrap: anywhere; }
-.card-side-source { color: var(--ink); font-weight: 600; }
-.card-side-detail { color: var(--muted); }
-.card-side-state { color: var(--accent); }
 .home-grid .card-action-row {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.35rem;
   margin: 0;
 }
 .home-grid .card-action-row .chip {
-  min-height: 28px;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.72rem;
-  line-height: 1.1;
+  min-height: 32px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.78rem;
 }
-.home-grid .ghost.danger { margin: 0; padding: 0.2rem 0; font-size: 0.72rem; }
+.home-grid .ghost.danger { margin: 0; font-size: 0.78rem; }
 .home-grid .zh-def { font-size: 1.05rem; }
 .home-grid .note, .home-grid .example { overflow-wrap: anywhere; }
-.home-grid-item.sentence .flip-card { grid-template-columns: minmax(0, 1fr); }
-.home-grid-item.sentence .card-side-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.55rem;
-  padding: 0;
-  border-left: none;
-}
 
 .review-session { max-width: 540px; margin: 1.5rem auto 0; }
 .review-progress { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.65rem; color: var(--muted); font-size: 0.85rem; }

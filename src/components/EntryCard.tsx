@@ -95,10 +95,9 @@ export function EntryCard({
           {entry.enrichment?.phonetic && (
             <p className="phonetic">{entry.enrichment.phonetic}</p>
           )}
-          {compact ? (
-            entry.context && <p className="card-context-preview">{entry.context}</p>
-          ) : (
-            <p className="meta-line">{metaParts.join(' · ')}</p>
+          <p className="meta-line">{metaParts.join(' · ')}</p>
+          {compact && entry.context && (
+            <p className="card-context-preview">{entry.context}</p>
           )}
           <p className="flip-hint">点按翻转</p>
         </div>
@@ -132,13 +131,6 @@ export function EntryCard({
         </div>
       </button>
 
-      {compact && (
-        <div className="card-side-meta" title={[category, entry.source, entry.sourceDetail].filter(Boolean).join(' · ')}>
-          <span className="card-side-source">{category}{entry.source ? ` · ${entry.source}` : ''}</span>
-          {entry.sourceDetail && <span className="card-side-detail">{entry.sourceDetail}</span>}
-          <span className="card-side-state">{kindLabel} · {FAM_LABEL[entry.familiarity]}</span>
-        </div>
-      )}
       <div className="card-actions" onClick={(e) => e.stopPropagation()}>
         <div className="row card-action-row">
           <button
