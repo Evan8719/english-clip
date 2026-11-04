@@ -21,6 +21,7 @@ interface CaptureSeed { text: string; context?: string; category?: string; sourc
 export default function App() {
   const workspace = useRef<HTMLElement>(null)
   const scrollPositions = useRef<Partial<Record<TabId, number>>>({})
+  const [dailyRequest, setDailyRequest] = useState(0)
   const [practiceVisited, setPracticeVisited] = useState(false)
   const [materialsVisited, setMaterialsVisited] = useState(false)
   const [materialSession, setMaterialSession] = useState(0)
@@ -122,6 +123,7 @@ export default function App() {
             onCapture={() => openCreate()}
             onMaterials={() => { setTab('materials') }}
             onDictionary={() => setTab('dictionary')}
+            onDaily={() => { setPracticeSeed(null); setDailyRequest(value => value + 1); setTab('practice') }}
             onOpenOrigin={(origin) => { setMaterialSession((n) => n + 1); setMaterialOrigin(origin); setTab('materials') }}
           />
         )}
@@ -136,7 +138,7 @@ export default function App() {
         )}
         {(tab === 'materials' || materialsVisited) && <div hidden={tab !== 'materials'}><MaterialsView active={tab === 'materials'} key={`${getStoredUserId() || 'local'}:${materialSession}:${materialOrigin?.materialId || 'library'}`} initialOrigin={materialOrigin} onCapture={openCreate} onPractice={(text, title) => { setPracticeSeed({ text, title }); setTab('practice') }} onSettings={() => setTab('settings')} /></div>}
         {tab === 'dictionary' && <DictionaryView onCapture={openCreate} />}
-        {(tab === 'practice' || practiceVisited) && <div hidden={tab !== 'practice'}><PracticeView key={getStoredUserId() || 'local'} active={tab === 'practice'} onReturn={practiceSeed ? () => setTab('materials') : undefined} entries={entries} seed={practiceSeed} onCapture={openCreate} /></div>}
+        {(tab === 'practice' || practiceVisited) && <div hidden={tab !== 'practice'}><PracticeView dailyRequest={dailyRequest} onOrigin={origin => { setMaterialSession(value => value + 1); setMaterialOrigin(origin); setTab('materials') }} key={getStoredUserId() || 'local'} active={tab === 'practice'} onReturn={practiceSeed ? () => setTab('materials') : undefined} entries={entries} seed={practiceSeed} onCapture={openCreate} /></div>}
         {tab === 'methods' && <LearningMethodsView onNavigate={setTab} onCapture={() => openCreate()} />}
         {tab === 'settings' && <SettingsView />}
       </main>

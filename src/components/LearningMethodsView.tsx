@@ -49,6 +49,13 @@ const methods: Method[] = [
     action: '开始开口练', tab: 'practice',
     source: '英语学习者跟读与听说练习研究', sourceUrl: 'https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2022.836013/pdf',
   },
+  {
+    id: 'thinking', number: '06', category: '英文思维', title: '从理解英文，到说自己的生活',
+    idea: '目标是让熟悉的英文直接连到场景与意思。中文可以作辅助，不必强迫自己“全英”。',
+    steps: ['选大部分能理解的短素材，先抓大意；需要时再查词。主观理解率和词汇覆盖率不是同一件事。', '看简明英英释义和例句，先听懂，再跟读节奏；不必严格卡住半秒。', '离开原文，用简单英文复述两三句，再说一句自己的经历；英语与中文都不只有一种固定逻辑。'],
+    action: '开始每日练习', tab: 'practice',
+    source: 'Nation：词汇覆盖与阅读、听力理解', sourceUrl: 'https://doi.org/10.26686/wgtn.12552221.v1',
+  },
 ]
 
 export function LearningMethodsView({ onNavigate, onCapture }: { onNavigate: (tab: TabId) => void; onCapture: () => void }) {

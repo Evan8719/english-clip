@@ -369,3 +369,49 @@ body, .redesign-shell, .redesign-home .home-controls, .library-controls { backgr
 .ai-settings-feedback.error { color: #a3423d; }
 
 .ai-settings-fields select { border: 1px solid #dae0e9; border-radius: 14px; padding: 12px; background: #fff; color: inherit; font-family: inherit; line-height: 1.4; }
+
+/* Daily practice connects source material to a short, personal conversation. */
+.daily-practice { max-width: 780px; }
+.daily-intro { margin: 20px 0; }
+.daily-intro h2 { margin: 14px 0 8px; font-size: 24px; line-height: 1.35; }
+.daily-intro p { color: #697383; line-height: 1.65; }
+.daily-preferences, .daily-origin, .daily-history { margin: 18px 0; border-top: 1px solid #e0e5ec; padding-top: 16px; }
+.daily-preferences summary, .daily-origin summary, .daily-history summary { cursor: pointer; line-height: 1.5; font-weight: 600; }
+.daily-preferences fieldset { min-width: 0; border: 0; padding: 16px 0 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.daily-preferences label { display: flex; flex-direction: column; gap: 7px; font-size: 14px; }
+.daily-preferences label:nth-child(n+3) { grid-column: 1 / -1; }
+.daily-preferences input, .daily-preferences select { width: 100%; min-width: 0; font-size: 16px; border: 1px solid #dce2ec; border-radius: 12px; padding: 11px; background: #fff; color: inherit; }
+.daily-basis { padding: 18px; margin: 18px 0; background: #f6f4ec; border-radius: 18px; }
+.daily-focus-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.daily-focus-chips span { background: #fff; padding: 6px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+.daily-session-meta { margin: 24px 0 10px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 14px; color: #697383; }
+.daily-progress { height: 4px; border-radius: 4px; overflow: hidden; background: #e3e9e3; }
+.daily-progress span { display: block; height: 100%; background: #77a08b; }
+.daily-step-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 16px 0; gap: 8px; }
+.daily-step-tabs button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 12px 6px; border: 1px solid #e0e5ec; border-radius: 14px; background: #fff; color: #6a7585; font-size: 14px; }
+.daily-step-tabs button.active { color: #3159b8; border-color: #a3b5d5; }
+.daily-task, .daily-reflection { min-width: 0; background: #fff; border: 1px solid #e3e7ee; border-radius: 20px; padding: 22px; margin: 16px 0; }
+.daily-reading { font-size: 19px; line-height: 1.8; color: #273342; overflow-wrap: anywhere; }
+.daily-task h3 { font-size: 18px; line-height: 1.65; }
+.daily-meanings { display: grid; gap: 12px; margin: 20px 0; }
+.daily-meanings article { background: #f6f7fa; padding: 16px; border-radius: 14px; }
+.daily-meanings strong { font-size: 18px; }
+.daily-meanings p { line-height: 1.6; }
+.daily-meanings small { display: block; font-size: 14px; line-height: 1.6; color: #697383; margin-bottom: 8px; }
+.daily-task .redesign-text-button, .home-daily, .daily-complete { display: inline-flex; gap: 7px; align-items: center; }
+.daily-complete { margin-top: 24px; }
+.daily-task textarea, .daily-reflection textarea { width: 100%; max-width: 100%; margin: 12px 0; font-size: 16px; }
+.daily-task details, .daily-origin p { line-height: 1.7; overflow-wrap: anywhere; }
+.daily-voice-options, .daily-reflection > div { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.daily-voice-options { font-size: 14px; }
+.daily-history button { display: block; text-align: left; width: 100%; padding: 14px 0; border: 0; border-bottom: 1px solid #e4e8ee; background: transparent; color: inherit; line-height: 1.5; }
+.home-daily { white-space: nowrap; }
+@media (max-width: 600px) { .daily-task, .daily-reflection { padding: 18px; } .daily-intro h2 { font-size: 23px; } .practice-mode-tabs { flex-wrap: wrap; } }
+
+.daily-practice { padding: 0 18px 22px; }
+.daily-controls.compact { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.daily-controls.compact .daily-preferences { flex: 1; min-width: 170px; border: 0; padding: 0; margin: 8px 0; }
+.daily-controls.compact .daily-preferences[open] { flex-basis: 100%; }
+.daily-controls.compact > button { padding: 10px 0; }
+.daily-step-tabs button { padding-block: 9px; }
+.daily-session-meta { margin-top: 16px; }

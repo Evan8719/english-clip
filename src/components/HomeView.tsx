@@ -6,6 +6,7 @@ import { NavIcon } from './NavIcon'
 
 interface Props {
   onOpenOrigin?: (origin: NonNullable<Entry['enrichment']>['origin']) => void
+  onDaily: () => void
   entries: Entry[]
   categories: string[]
   onEdit: (entry: Entry) => void
@@ -17,7 +18,7 @@ interface Props {
   onDictionary: () => void
 }
 
-export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary, onOpenOrigin }: Props) {
+export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary, onOpenOrigin, onDaily }: Props) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
   const [source, setSource] = useState('全部来源')
@@ -77,6 +78,7 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
 
       <div className="home-list-head">
         <div><h2>词句</h2><p className="muted tiny">{filtered.length} 条 · {order === 'recent' ? '最近记录在前' : '按字母排列'} · 点卡片翻看释义</p></div>
+        <button className="redesign-text-button home-daily" onClick={onDaily}><NavIcon name="chat" />每日练习</button>
         {lexiconStatus && <span className="muted tiny">{lexiconStatus}</span>}
       </div>
       {filtered.length === 0 ? <div className="home-empty panel">

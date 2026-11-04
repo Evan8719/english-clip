@@ -126,8 +126,8 @@ export async function explainWithAi(text: string, context: string, source: strin
   return (await request<{ explanation: { definitionsZh: string[]; note: string; uncertain: boolean; provider: 'deepseek' | 'gemini' } }>('/api/ai/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, context, source }), signal })).explanation
 }
 
-export async function chatWithAi(message: string, focus: string, history: Array<{ role: 'user' | 'assistant'; content: string }>, onDelta: (delta: string) => void, signal?: AbortSignal): Promise<void> {
-  const response = await authorizedApiFetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, focus, history }), signal })
+export async function chatWithAi(message: string, focus: string, history: Array<{ role: 'user' | 'assistant'; content: string }>, onDelta: (delta: string) => void, signal?: AbortSignal, dailySessionId?: string): Promise<void> {
+  const response = await authorizedApiFetch(dailySessionId ? '/api/ai/daily/chat' : '/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dailySessionId ? { message, sessionId: dailySessionId } : { message, focus, history }), signal })
   if (!response.ok) { const error = await response.json(); throw Error(error.message || 'AI 连接失败') }
   const reader = response.body?.getReader()
   if (!reader) throw Error('浏览器不支持流式回答')

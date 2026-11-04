@@ -1,4 +1,5 @@
 import { streamConversation, explainExpression, assistantConfig, testAssistant } from './deepseek.mjs'
+import { createDailyLearningApi } from './daily-learning.mjs'
 import { AI_PRESETS, normalizeAiSettings, normalizeApiKey } from './ai-config.mjs'
 import { generateStudyGuide } from './study-guide.mjs'
 import { catalogItem, writeCatalogIndex } from './catalog-library.mjs'
@@ -38,7 +39,7 @@ export function makeExercises(transcript) {
   return exercises
 }
 
-export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(dataDir, 'library') }) {
+export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(dataDir, 'library'), getEntries = () => [] }) {
   const root = join(dataDir, 'media')
   const filesDir = join(root, 'files')
   const jobsDir = join(root, 'jobs')
@@ -64,6 +65,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     catch { item.catalogError = '可读目录暂未更新，原资料仍可使用' }
   }
   const bucket = (uid) => (index[uid] ||= {})
+  const dailyApi = createDailyLearningApi({ dataDir, sendJson, getEntries, getMaterials: uid => Object.values(bucket(uid)), getAssistant: uid => { const provider = providerFor(uid); return { provider, apiKey: readKey(uid, provider), settings: configFor(uid, provider) } } })
   const get = (uid, id) => bucket(uid)[id]
   const fileFor = (item) => join(filesDir, item.ownerId, `${item.id}.${item.extension}`)
   const sign = (item, exp) => createHmac('sha256', secret).update(`${item.ownerId}:${item.id}:${exp}`).digest('hex')
@@ -208,6 +210,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
 
   async function handle(req, res, url, user, readBody) {
     const path = url.pathname
+    if (path.startsWith('/api/ai/daily')) return dailyApi(req, res, url, user, readBody)
     if (path === '/api/local/jobs' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
       for (const item of Object.values(bucket(user.id))) if (item.status === 'transcribing-local' && (item.localLeaseUntil || 0) < Date.now()) { item.status = 'queued-local'; save() }
