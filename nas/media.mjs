@@ -1,5 +1,6 @@
 import { streamConversation } from './deepseek.mjs'
 import { generateStudyGuide } from './study-guide.mjs'
+import { catalogItem, writeCatalogIndex } from './catalog-library.mjs'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { once } from 'node:events'
@@ -36,7 +37,7 @@ export function makeExercises(transcript) {
   return exercises
 }
 
-export function createMediaApi({ dataDir, secret, sendJson }) {
+export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(dataDir, 'library') }) {
   const root = join(dataDir, 'media')
   const filesDir = join(root, 'files')
   const jobsDir = join(root, 'jobs')
@@ -51,6 +52,10 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
   const encryptionKey = createHash('sha256').update(secret).digest()
   const save = () => atomicJson(indexFile, index)
   const saveKeys = () => atomicJson(keysFile, keys)
+  function readable(item) {
+    try { if (item.extension) { catalogItem(item, dataDir, libraryDir); writeCatalogIndex(index, libraryDir); delete item.catalogError } }
+    catch { item.catalogError = '可读目录暂未更新，原资料仍可使用' }
+  }
   const bucket = (uid) => (index[uid] ||= {})
   const get = (uid, id) => bucket(uid)[id]
   const fileFor = (item) => join(filesDir, item.ownerId, `${item.id}.${item.extension}`)
@@ -127,6 +132,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       item.error = error.message || '处理失败'
     }
     item.updatedAt = new Date().toISOString()
+    readable(item)
     save()
     if (item.status === 'ready') void prepareGuide(item)
   }
@@ -157,6 +163,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       item.status = item.kind === 'book' || item.transcript?.trim() ? 'ready' : 'uploaded'
       item.exercises = item.transcript?.trim() ? makeExercises(item.transcript) : []
       item.updatedAt = new Date().toISOString()
+      readable(item)
       save()
     } catch (error) {
       stream.destroy()
@@ -293,6 +300,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
         item.exercises = makeExercises(item.transcript); item.status = 'ready'; item.error = ''
       } else if (body.error) { item.status = 'failed'; item.error = String(body.error).slice(0, 300) }
       else { if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '任务正在处理'); item.status = 'queued-local'; item.error = '' }
+      if (typeof body.transcript === 'string') readable(item)
       item.updatedAt = new Date().toISOString(); save()
       if (typeof body.transcript === 'string') void prepareGuide(item)
       return sendJson(res, 200, { ok: true, item: publicItem(item) })
@@ -335,6 +343,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
         item.segments = timedSegments(body.segments)
         item.status = 'ready'
       }
+      if (body.transcript !== undefined || body.title !== undefined || body.level !== undefined || body.segments !== undefined) readable(item)
       item.updatedAt = new Date().toISOString(); save()
       if (typeof body.transcript === 'string') void prepareGuide(item)
       return sendJson(res, 200, { ok: true, item: publicItem(item) })

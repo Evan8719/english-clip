@@ -223,7 +223,7 @@ const bearer = (req) => {
 }
 
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
-const mediaApi = createMediaApi({ dataDir: DATA_DIR, secret: SECRET, sendJson })
+const mediaApi = createMediaApi({ dataDir: DATA_DIR, libraryDir: process.env.EC_LIBRARY_DIR || (process.env.EC_DATA_DIR ? join(DATA_DIR, 'library') : join(ROOT, 'library')), secret: SECRET, sendJson })
 
 /* ── 认证限流（防爆破）───────────────────────────────── */
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, statSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { EventEmitter } from 'node:events'
 import { streamConversation } from '../nas/deepseek.mjs'
@@ -51,6 +51,9 @@ try {
   const audio = (await api('/api/media', token, 'POST', { title: 'Test audio', kind: 'audio' })).data.item
   const upload = await fetch(`http://127.0.0.1:${port}/api/media/${audio.id}/file`, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'X-File-Extension': 'mp3' }, body: 'ID3test' })
   assert.equal(upload.status, 200)
+  const uploadedItem = (await upload.json()).item
+  assert.ok(uploadedItem.libraryPath.includes('Test audio.mp3'))
+  assert.equal(statSync(join(data, 'library', uploadedItem.libraryPath)).ino, statSync(join(data, 'media/files', uploadedItem.ownerId, `${audio.id}.mp3`)).ino)
   assert.equal((await api(`/api/media/${audio.id}/local`, token, 'POST', {})).data.item.status, 'queued-local')
   assert.equal((await api('/api/local/jobs', token)).data.items.length, 1)
   assert.equal((await api(`/api/media/${audio.id}/local`, token, 'POST', { claim: true })).data.item.status, 'transcribing-local')
@@ -58,6 +61,7 @@ try {
   const complete = await api(`/api/media/${audio.id}/local`, token, 'POST', { transcript: 'I look forward to reading the book. It is an interesting story.', segments: [{ start: 0, end: 3, text: 'I look forward to reading the book.' }] })
   assert.equal(complete.data.item.status, 'ready'); assert.equal(complete.data.item.segments.length, 1)
   assert.ok(complete.data.item.exercises.length > 1)
+  assert.ok(existsSync(join(data, 'library', uploadedItem.libraryPath.replace(/\.mp3$/, '.en.srt'))))
   const note = { id: 'test-note', at: 1.5, text: 'Remember this expression.', quote: 'I look forward to reading the book.' }
   assert.equal((await api(`/api/media/${audio.id}`, token, 'PATCH', { notes: [note] })).data.item.notes[0].at, 1.5)
   assert.equal((await api(`/api/media/${audio.id}`, token)).data.item.notes[0].text, note.text)
