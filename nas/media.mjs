@@ -1,4 +1,4 @@
-import { streamConversation } from './deepseek.mjs'
+import { streamConversation, explainExpression, assistantConfig } from './deepseek.mjs'
 import { generateStudyGuide } from './study-guide.mjs'
 import { catalogItem, writeCatalogIndex } from './catalog-library.mjs'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
@@ -43,10 +43,15 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
   const jobsDir = join(root, 'jobs')
   const indexFile = join(root, 'index.json')
   const keysFile = join(root, 'ai-keys.json')
+  const preferencesFile = join(root, 'ai-preferences.json')
   mkdirSync(filesDir, { recursive: true })
   mkdirSync(jobsDir, { recursive: true })
   let index = existsSync(indexFile) ? JSON.parse(readFileSync(indexFile, 'utf8')) : {}
   let keys = existsSync(keysFile) ? JSON.parse(readFileSync(keysFile, 'utf8')) : {}
+  const preferences = existsSync(preferencesFile) ? JSON.parse(readFileSync(preferencesFile, 'utf8')) : {}
+  const explanationCache = new Map(), explanationLimits = new Map()
+  const providerFor = uid => preferences[uid]?.provider === 'gemini' ? 'gemini' : 'deepseek'
+  const keyId = (uid, provider) => ['deepseek', 'gemini'].includes(provider) ? `${uid}:${provider}` : uid
   const recentChat = new Map()
   const guideJobs = new Set()
   const encryptionKey = createHash('sha256').update(secret).digest()
@@ -72,17 +77,17 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
   const reject = (res, status, message) => sendJson(res, status, { ok: false, message })
 
   async function prepareGuide(item) {
-    const key = readKey(item.ownerId, 'deepseek')
+    const provider = providerFor(item.ownerId), key = readKey(item.ownerId, provider)
     if (!key || !item.transcript || item.kind === 'book' || guideJobs.has(item.id)) return
     const transcript = item.transcript
     guideJobs.add(item.id); item.guideStatus = 'processing'; item.guideError = ''; save()
-    try { const guide = await generateStudyGuide({ ...item, transcript }, key); if (item.transcript === transcript) { item.studyGuide = guide; item.guideStatus = 'ready' } }
+    try { const guide = await generateStudyGuide({ ...item, transcript }, key, fetch, provider); if (item.transcript === transcript) { item.studyGuide = guide; item.guideStatus = 'ready' } }
     catch (error) { item.guideStatus = 'failed'; item.guideError = error.message }
     finally { guideJobs.delete(item.id); save() }
   }
 
   function readKey(uid, provider = 'openai') {
-    const encrypted = keys[provider === 'deepseek' ? `${uid}:deepseek` : uid]
+    const encrypted = keys[keyId(uid, provider)]
     if (!encrypted) return ''
     try {
       const [iv, tag, data] = encrypted.split('.')
@@ -198,35 +203,68 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     }
     if (path === '/api/ai/status' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
-      return sendJson(res, 200, { ok: true, configured: Boolean(readKey(user.id)), deepseekConfigured: Boolean(readKey(user.id, 'deepseek')), chatProvider: 'DeepSeek', model: 'deepseek-flash' })
+      return sendJson(res, 200, { ok: true, configured: Boolean(readKey(user.id)), deepseekConfigured: Boolean(readKey(user.id, 'deepseek')), geminiConfigured: Boolean(readKey(user.id, 'gemini')), assistantProvider: providerFor(user.id), assistantConfigured: Boolean(readKey(user.id, providerFor(user.id))), chatProvider: assistantConfig(providerFor(user.id)).name, model: assistantConfig(providerFor(user.id)).options.model })
     }
     if (path === '/api/ai/key' && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
       const body = await readBody(req)
-      const keyId = body.provider === 'deepseek' ? `${user.id}:deepseek` : user.id
+      const provider = ['deepseek', 'gemini'].includes(body.provider) ? body.provider : 'openai'
+      const id = keyId(user.id, provider)
       const key = String(body.apiKey || '').trim()
-      if (!key.startsWith('sk-') || key.length > 300) return reject(res, 400, 'API 密钥格式不正确')
+      if (!(provider === 'gemini' ? /^AIza[\w-]{20,}$/.test(key) : key.startsWith('sk-')) || key.length > 300) return reject(res, 400, 'API 密钥格式不正确')
       const iv = randomBytes(12)
       const cipher = createCipheriv('aes-256-gcm', encryptionKey, iv)
       const data = Buffer.concat([cipher.update(key, 'utf8'), cipher.final()])
-      keys[keyId] = `${iv.toString('hex')}.${cipher.getAuthTag().toString('hex')}.${data.toString('hex')}`
+      keys[id] = `${iv.toString('hex')}.${cipher.getAuthTag().toString('hex')}.${data.toString('hex')}`
       saveKeys()
       return sendJson(res, 200, { ok: true, configured: true })
     }
     if (path === '/api/ai/key' && req.method === 'DELETE') {
       if (!user) return reject(res, 401, '未登录')
-      delete keys[url.searchParams.get('provider') === 'deepseek' ? `${user.id}:deepseek` : user.id]
+      delete keys[keyId(user.id, url.searchParams.get('provider'))]
       saveKeys()
       return sendJson(res, 200, { ok: true, configured: false })
     }
+    if (path === '/api/ai/provider' && req.method === 'POST') {
+      if (!user) return reject(res, 401, '未登录')
+      const body = await readBody(req)
+      if (!['deepseek', 'gemini'].includes(body.provider)) return reject(res, 400, '不支持的 AI 服务')
+      if (!readKey(user.id, body.provider)) return reject(res, 409, '请先保存该服务的 API 密钥')
+      preferences[user.id] = { provider: body.provider }; atomicJson(preferencesFile, preferences)
+      return sendJson(res, 200, { ok: true, provider: body.provider })
+    }
+    if (path === '/api/ai/explain' && req.method === 'POST') {
+      if (!user) return reject(res, 401, '未登录')
+      const provider = providerFor(user.id), apiKey = readKey(user.id, provider)
+      if (!apiKey) return reject(res, 409, '请先在设置中配置所选 AI 服务')
+      const body = await readBody(req)
+      const input = { text: String(body.text || '').trim().slice(0, 2000), context: String(body.context || '').trim().slice(0, 3500), source: String(body.source || '').slice(0, 180) }
+      if (!input.text) return reject(res, 400, '请输入英文表达')
+      const fingerprint = createHash('sha256').update(JSON.stringify({ uid: user.id, provider, ...input })).digest('hex')
+      const cached = explanationCache.get(fingerprint)
+      if (cached && cached.until > Date.now()) return sendJson(res, 200, { ok: true, explanation: cached.value, cached: true })
+      const limit = explanationLimits.get(user.id)
+      if (limit && limit.until > Date.now() && limit.count >= 40) return reject(res, 429, '释义请求较多，请稍候再试')
+      explanationLimits.set(user.id, limit && limit.until > Date.now() ? { ...limit, count: limit.count + 1 } : { until: Date.now() + 60000, count: 1 })
+      const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 35000)
+      const close = () => { if (!res.writableEnded) controller.abort() }
+      res.on('close', close)
+      try {
+        const value = await explainExpression({ apiKey, provider, body: input, signal: controller.signal })
+        if (explanationCache.size >= 200) explanationCache.delete(explanationCache.keys().next().value)
+        explanationCache.set(fingerprint, { until: Date.now() + 86400000, value })
+        if (!res.destroyed) sendJson(res, 200, { ok: true, explanation: value })
+      } finally { clearTimeout(timer); res.off('close', close) }
+      return true
+    }
     if (path === '/api/ai/chat' && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
-      const apiKey = readKey(user.id, 'deepseek')
-      if (!apiKey) return reject(res, 409, '先在设置中配置 DeepSeek API 密钥')
+      const provider = providerFor(user.id), apiKey = readKey(user.id, provider)
+      if (!apiKey) return reject(res, 409, '先在设置中配置所选 AI 服务的密钥')
       if (recentChat.get(user.id)) return reject(res, 429, '当前回答尚未完成')
       const body = await readBody(req)
       recentChat.set(user.id, true)
-      try { await streamConversation(req, res, { apiKey, body }) } finally { recentChat.delete(user.id) }
+      try { await streamConversation(req, res, { apiKey, body, provider }) } finally { recentChat.delete(user.id) }
       return true
     }
     if (path === '/api/media' && req.method === 'GET') {
@@ -282,7 +320,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     if (!user) return reject(res, 401, '未登录')
     if ((item.kind === 'link' && action && action !== 'guide') || (item.kind === 'lesson' && ['local', 'process'].includes(action))) return reject(res, 400, '收集链接不需要上传或转写')
     if (action === 'guide' && req.method === 'POST') {
-      if (!readKey(user.id, 'deepseek')) return reject(res, 409, '请先在设置中配置 DeepSeek')
+      if (!readKey(user.id, providerFor(user.id))) return reject(res, 409, '请先在设置中配置所选 AI 服务')
       if (!item.transcript || item.kind === 'book') return reject(res, 400, '请先为音视频生成原文')
       await prepareGuide(item)
       return sendJson(res, 200, { ok: true, item: publicItem(item) })

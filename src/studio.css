@@ -348,3 +348,10 @@ body, .redesign-shell, .redesign-home .home-controls, .library-controls { backgr
 .settings-help-links { display:flex; flex-wrap:wrap; gap:20px; margin:18px 0; }
 .settings-help-links a { display:inline-flex; align-items:center; gap:8px; color:#2855b0; text-decoration:none; font-size:.85rem; min-height:44px; }
 .settings-help-links a svg { width:20px; height:20px; }
+.capture-ai-tools { display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-size:.8rem; margin:10px 0; }
+.capture-ai-tools label { display:flex; align-items:center; gap:6px; }
+.capture-ai-tools button { font-size:.78rem; }
+.capture-ai-tools + textarea, .enrich-box textarea { width:100%; border:1px solid #dfe3eb; border-radius:10px; padding:10px; background:#fff; }
+.definition-provenance { color:#586b70; font-size:.75rem; line-height:1.7; margin:10px 0; }
+.ai-provider-select { display:flex; gap:12px; align-items:center; margin-block:16px; }
+.ai-provider-select select { min-height:44px; padding:8px 14px; background:#fff; color:#253e78; border:1px solid #dfe3eb; border-radius:10px; }

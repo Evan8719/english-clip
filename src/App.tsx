@@ -1,7 +1,7 @@
 import { NavIcon } from './components/NavIcon'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Entry, Familiarity, TabId } from './types'
-import { createEntry, listEntries, reviewEntry, softDeleteEntry, updateEntry } from './db/entries'
+import { createEntry, getEntry, listEntries, reviewEntry, softDeleteEntry, updateEntry } from './db/entries'
 import { ensureLexiconLoaded } from './lib/lexicon'
 import { listCategories, migrateLegacyEntryCategories } from './lib/categories'
 import { warmSpeechVoices } from './lib/speech'
@@ -14,6 +14,7 @@ import { SettingsView } from './components/SettingsView'
 import { DictionaryView } from './components/DictionaryView'
 import { PracticeView } from './components/PracticeView'
 import { LearningMethodsView } from './components/LearningMethodsView'
+import { explainWithAi } from './lib/media'
 
 interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number; courseId?: string; episode?: number; timestamp?: number } }
 
@@ -82,6 +83,28 @@ export default function App() {
       scheduleSilentSync()
     })
   }
+
+  const pendingMeanings = useRef(new Set<string>())
+  const completeAiMeaning = useCallback(async (saved: Entry) => {
+    const uid = getStoredUserId(), requestId = `${uid}:${saved.id}`
+    if (!uid || !navigator.onLine || pendingMeanings.current.has(requestId)) return
+    pendingMeanings.current.add(requestId)
+    try {
+      const result = await explainWithAi(saved.text, saved.context || '', saved.source || '')
+      const current = await getEntry(saved.id)
+      if (uid !== getStoredUserId() || !current || current.text !== saved.text || current.context !== saved.context || current.source !== saved.source || !current.enrichment?.aiPending) return
+      await updateEntry(saved.id, { enrichment: { ...current.enrichment, definitions: [], definitionsZh: result.definitionsZh, examples: [], provider: result.provider === 'gemini' ? 'ai-gemini' : 'ai-deepseek', aiNote: result.note, aiUncertain: result.uncertain, aiPending: false } })
+      await refresh(); scheduleSilentSync()
+    } catch {
+      const current = await getEntry(saved.id)
+      if (uid === getStoredUserId() && current?.text === saved.text && current.context === saved.context && current.source === saved.source && current.enrichment?.aiPending) {
+        await updateEntry(saved.id, { enrichment: { ...current.enrichment, aiPending: false, aiNote: 'AI 释义未完成，可在编辑中重试' } }); await refresh(); scheduleSilentSync()
+      }
+    } finally { pendingMeanings.current.delete(requestId) }
+  }, [refresh])
+
+  useEffect(() => { for (const entry of entries.filter(item => item.enrichment?.aiPending).slice(0, 3)) void completeAiMeaning(entry) }, [entries, completeAiMeaning])
+  useEffect(() => { const online = () => { void refresh() }; window.addEventListener('online', online); return () => window.removeEventListener('online', online) }, [refresh])
 
   return (
     <div className="redesign-shell">

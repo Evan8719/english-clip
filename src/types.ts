@@ -15,7 +15,10 @@ export interface Enrichment {
   frequencyBand?: FrequencyBand
   cefrBand?: string
   pos?: string
-  provider?: 'local' | 'free-dictionary' | 'manual'
+  provider?: 'local' | 'free-dictionary' | 'manual' | 'ai-deepseek' | 'ai-gemini'
+  aiNote?: string
+  aiUncertain?: boolean
+  aiPending?: boolean
 }
 
 export interface Entry {

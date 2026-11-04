@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavIcon } from './NavIcon'
 import type { SyncUser as User } from '../lib/sync'
-import { aiKeyConfigured, deepseekConfigured, deleteAiKey, saveAiKey } from '../lib/media'
+import { aiKeyConfigured, deleteAiKey, saveAiKey, getAiStatus, chooseAiProvider } from '../lib/media'
 import { exportEntriesJson, exportEntriesMarkdown } from '../lib/export'
 import {
   addCategory,
@@ -31,12 +31,13 @@ export function SettingsView() {
   const [aiKey, setAiKey] = useState('')
   const [deepseekKey, setDeepseekKey] = useState('')
   const [deepseekReady, setDeepseekReady] = useState(false)
+  const [geminiKey, setGeminiKey] = useState(''), [geminiReady, setGeminiReady] = useState(false), [assistantProvider, setAssistantProvider] = useState<'deepseek' | 'gemini'>('deepseek')
   const [aiConfigured, setAiConfigured] = useState(false)
   const configured = isSyncConfigured()
 
   async function refresh() {
     const current = await getCurrentUser()
-    if (current) void deepseekConfigured().then(setDeepseekReady).catch(() => setDeepseekReady(false))
+    if (current) void getAiStatus().then(status => { setDeepseekReady(status.deepseekConfigured); setGeminiReady(status.geminiConfigured); setAssistantProvider(status.assistantProvider) }).catch(() => { setDeepseekReady(false); setGeminiReady(false) })
     setUser(current)
     setAiConfigured(current ? await aiKeyConfigured().catch(() => false) : false)
     setLastSync(await getLastSyncAt())
@@ -63,10 +64,15 @@ export function SettingsView() {
       </section>
 
       <section className="panel">
-        <h2>DeepSeek 即时对话</h2>
-        <p className="muted">使用 DeepSeek Flash 流式反馈。对话发送当前表达和最近几轮文字；素材原文可自动整理重点和理解练习。密钥加密保存在 NAS。</p>
+        <h2>AI 释义与对话</h2>
+        <p className="muted">用于按原句释义、对话反馈和素材重点。密钥加密保存在 NAS。</p>
+        {user && <label className="ai-provider-select">当前服务<select aria-label="选择 AI 服务" value={assistantProvider} onChange={event => { const provider = event.target.value as 'deepseek' | 'gemini'; setBusy(true); void chooseAiProvider(provider).then(() => { setAssistantProvider(provider); setMessage('AI 服务已切换') }).catch((error: Error) => setMessage(error.message)).finally(() => setBusy(false)) }} disabled={busy}><option value="deepseek" disabled={!deepseekReady}>DeepSeek</option><option value="gemini" disabled={!geminiReady}>Gemini</option></select></label>}
         <p>{deepseekReady ? 'DeepSeek 已配置' : '尚未配置 DeepSeek'}</p>
         {user && <div className="row"><input type="password" autoComplete="off" aria-label="DeepSeek API 密钥" placeholder="输入 DeepSeek API 密钥" value={deepseekKey} onChange={(e) => setDeepseekKey(e.target.value)} /><button className="primary" disabled={busy || !deepseekKey.trim()} onClick={() => { setBusy(true); void saveAiKey(deepseekKey.trim(), 'deepseek').then(() => { setDeepseekKey(''); setDeepseekReady(true); setMessage('DeepSeek 已保存') }).catch((e: Error) => setMessage(e.message)).finally(() => setBusy(false)) }}>保存</button>{deepseekReady && <button className="ghost" onClick={() => { void deleteAiKey('deepseek').then(() => setDeepseekReady(false)).catch((e: Error) => setMessage(e.message)) }}>移除</button>}</div>}
+      </section>
+      <section className="panel">
+        <h2>Gemini API</h2><p className="muted tiny">订阅与外部 App 的 API 用量分开管理。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">创建 API 密钥</a> · <a href="https://aistudio.google.com/docs/google-ai-plans" target="_blank" rel="noreferrer">订阅说明</a></p><p>{geminiReady ? 'Gemini 已配置' : '尚未配置 Gemini'}</p>
+        {user && <div className="row"><input type="password" autoComplete="off" aria-label="Gemini API 密钥" placeholder="输入 Gemini API 密钥" value={geminiKey} onChange={event => setGeminiKey(event.target.value)} /><button className="primary" disabled={busy || !geminiKey.trim()} onClick={() => { setBusy(true); void saveAiKey(geminiKey.trim(), 'gemini').then(() => { setGeminiKey(''); setGeminiReady(true); setMessage('Gemini 已保存，可在上方切换服务') }).catch((error: Error) => setMessage(error.message)).finally(() => setBusy(false)) }}>保存</button>{geminiReady && <button className="ghost" onClick={() => { void deleteAiKey('gemini').then(() => setGeminiReady(false)).catch((error: Error) => setMessage(error.message)) }}>移除</button>}</div>}
       </section>
       <section className="panel">
         <h2>电脑本地转写</h2><p className="muted">素材内点击「本机转写」，再在电脑运行项目的本地转写助手。助手复用已安装的字幕工具模型，只向 NAS 回传文稿。电脑休眠或助手未启动时，任务会等待。</p><p className="muted tiny">启动命令见 nas/README.md 的本机转写章节。助手只需登录自己的 NAS 账号，不需要对外开放电脑端口。</p>

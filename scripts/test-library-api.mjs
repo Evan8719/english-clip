@@ -18,6 +18,16 @@ try {
   const owner = await api('/api/auth/register', '', 'POST', { email: 'owner@example.test', password: 'test-only-password' })
   const token = owner.data.token
   assert.ok(token)
+  assert.equal((await api('/api/ai/explain', '', 'POST', { text: 'fine' })).status, 401)
+  assert.equal((await api('/api/ai/explain', token, 'POST', { text: 'fine' })).status, 409)
+  assert.equal((await api('/api/ai/provider', token, 'POST', { provider: 'gemini' })).status, 409)
+  const geminiTestKey = 'AIzaTEST_ONLY_NOT_A_REAL_KEY_123456789'
+  assert.equal((await api('/api/ai/key', token, 'POST', { provider: 'gemini', apiKey: geminiTestKey })).status, 200)
+  assert.ok(!readFileSync(join(data, 'media', 'ai-keys.json'), 'utf8').includes(geminiTestKey))
+  assert.equal((await api('/api/ai/provider', token, 'POST', { provider: 'gemini' })).status, 200)
+  assert.equal((await api('/api/ai/status', token)).data.assistantProvider, 'gemini')
+  assert.equal((await api('/api/ai/explain', token, 'POST', { text: '' })).status, 400)
+  await api('/api/ai/key?provider=gemini', token, 'DELETE')
   const bookmark = { title: 'Collected English video', kind: 'link', sourceUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE', source: 'YouTube' }
   const link = await api('/api/media', token, 'POST', bookmark)
   assert.equal(link.status, 201); assert.equal(link.data.item.status, 'ready'); assert.equal(link.data.item.streamUrl, null)
@@ -44,6 +54,7 @@ try {
   assert.equal((await api(`/api/media/${id}`, token, 'PATCH', { readingPosition: { chapter: 0, paragraph: 1 }, level: 'B2' })).data.item.readingPosition.paragraph, 1)
   assert.equal((await api(`/api/media/${id}/process`, token, 'POST', {})).status, 400)
   await api('/api/ai/key', token, 'POST', { apiKey: 'sk-test-deepseek-not-real', provider: 'deepseek' })
+  assert.equal((await api('/api/ai/provider', token, 'POST', { provider: 'deepseek' })).status, 200)
   const status = (await api('/api/ai/status', token)).data
   assert.equal(status.deepseekConfigured, true); assert.equal(status.configured, false)
   assert.ok(!readFileSync(join(data, 'media', 'ai-keys.json'), 'utf8').includes('sk-test-deepseek-not-real'))

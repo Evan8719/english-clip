@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Enrichment, Entry, EntryKind } from '../types'
 import { detectKind } from '../lib/normalize'
 import { enrichText } from '../lib/enrich'
@@ -14,6 +14,7 @@ import {
 } from '../lib/categories'
 import { VoiceInput } from './VoiceInput'
 import { speakEnglish } from '../lib/speech'
+import { explainWithAi, getAiStatus } from '../lib/media'
 
 export interface EntryFormInput {
   text: string
@@ -76,6 +77,12 @@ export function CaptureModal({
   const [newCategory, setNewCategory] = useState('')
   const [showMore, setShowMore] = useState(false)
   const [showCustomCat, setShowCustomCat] = useState(false)
+  const [aiEnabled, setAiEnabled] = useState(() => localStorage.getItem('ec.capture-ai') !== 'off')
+  const [aiSignature, setAiSignature] = useState('')
+  const [aiReady, setAiReady] = useState(false), [aiBusy, setAiBusy] = useState(false), [aiError, setAiError] = useState(''), [aiRevision, setAiRevision] = useState(0), [manualGloss, setManualGloss] = useState(false), [editGloss, setEditGloss] = useState(false)
+  const activeText = useRef('')
+  const initializingText = useRef<string | null>(null)
+  useEffect(() => { if (!open) return; let cancelled = false; void getAiStatus().then(status => { if (!cancelled) setAiReady(status.assistantConfigured) }).catch(() => { if (!cancelled) setAiReady(false) }); return () => { cancelled = true } }, [open])
 
   const hints = useMemo(() => categoryHints(category), [category])
   const sourceSuggestions = useMemo(
@@ -89,6 +96,7 @@ export function CaptureModal({
     void listCategories().then(setCategories)
     setNewCategory('')
     setShowCustomCat(false)
+    setAiRevision(0); setAiSignature(''); setManualGloss(false); setEditGloss(false); setAiError(''); setSaveError(''); activeText.current = entry?.text.trim() || initialText.trim(); initializingText.current = activeText.current
 
     if (entry) {
       setText(entry.text)
@@ -120,21 +128,40 @@ export function CaptureModal({
   }, [open, entry, initialText, initialContext, initialCategory, initialSource, initialSourceDetail])
 
   useEffect(() => {
-    if (!open || editing) return
+    if (!open) return
     const trimmed = text.trim()
+    if (initializingText.current !== null) { if (trimmed !== initializingText.current) return; initializingText.current = null }
+    if (trimmed !== activeText.current) { activeText.current = trimmed; setEnrichment(undefined); setManualGloss(false) }
+    if (editing) return
     if (!trimmed) {
+      setEnriching(false)
       setEnrichment(undefined)
       return
     }
     setKind(detectKind(trimmed))
+    let cancelled = false
     const handle = window.setTimeout(() => {
       setEnriching(true)
       void enrichText(trimmed)
-        .then((result) => setEnrichment(result))
-        .finally(() => setEnriching(false))
+        .then((result) => { if (!cancelled) setEnrichment(current => current?.provider?.startsWith('ai-') || current?.provider === 'manual' ? current : result) })
+        .catch(() => undefined)
+        .finally(() => { if (!cancelled) setEnriching(false) })
     }, 280)
-    return () => window.clearTimeout(handle)
+    return () => { cancelled = true; window.clearTimeout(handle) }
   }, [text, open, editing])
+
+  useEffect(() => {
+    if (!open || !aiReady || !aiEnabled || !text.trim() || manualGloss || (editing && aiRevision === 0)) { setAiBusy(false); return }
+    const controller = new AbortController(); let cancelled = false
+    setAiError('')
+    const timer = window.setTimeout(() => {
+      setAiBusy(true)
+      void explainWithAi(text.trim(), context, source, controller.signal).then(result => {
+        if (!cancelled) { setAiSignature(JSON.stringify([text.trim(), context, source])); setEnrichment(current => ({ ...current, definitions: [], examples: [], definitionsZh: result.definitionsZh, provider: result.provider === 'gemini' ? 'ai-gemini' : 'ai-deepseek', aiNote: result.note, aiUncertain: result.uncertain, aiPending: false })) }
+      }).catch((error: Error) => { if (!cancelled && error.name !== 'AbortError') setAiError(error.message) }).finally(() => { if (!cancelled) setAiBusy(false) })
+    }, 900)
+    return () => { cancelled = true; window.clearTimeout(timer); controller.abort() }
+  }, [open, aiReady, aiEnabled, text, context, source, manualGloss, editing, aiRevision])
 
   if (!open) return null
 
@@ -153,7 +180,7 @@ export function CaptureModal({
         source: source.trim() || undefined,
         sourceDetail: sourceDetail.trim() || undefined,
         mySentence: mySentence.trim() || undefined,
-        enrichment,
+        enrichment: aiEnabled && aiReady && !manualGloss && (!editing || aiRevision > 0) && aiSignature !== JSON.stringify([text.trim(), context, source]) ? { ...(enrichment || { definitions: [], examples: [] }), aiPending: true } : enrichment,
       })
       onClose()
     } catch (error) { setSaveError((error as Error).message || '保存失败，请重试') } finally {
@@ -333,9 +360,13 @@ export function CaptureModal({
 
         <section className="enrich-box">
           <div className="enrich-title">
-            <span>释义</span>
-            {enriching && <span className="muted">查找中…</span>}
+            <span>{enrichment?.provider?.startsWith('ai-') ? 'AI · 结合原句' : '词典参考'}</span>
+            {aiBusy ? <span className="muted">AI 释义中…</span> : enriching && <span className="muted">查找中…</span>}
           </div>
+          <div className="capture-ai-tools"><label><input type="checkbox" checked={aiEnabled} onChange={event => { setAiEnabled(event.target.checked); localStorage.setItem('ec.capture-ai', event.target.checked ? 'on' : 'off') }} />AI 释义</label><button type="button" className="redesign-text-button" disabled={!text.trim() || !aiReady || aiBusy} onClick={() => { setManualGloss(false); setAiEnabled(true); setAiRevision(value => value + 1) }}>按原句重释</button><button type="button" className="redesign-text-button" onClick={() => { setEditGloss(value => !value); setManualGloss(true) }}>修改释义</button></div>
+          {aiEnabled && !aiReady && <p className="muted tiny">在设置中配置 AI 后，可自动按原句释义。</p>}
+          {aiError && <p className="muted tiny" role="status">{aiError}；可先保存，再重试。</p>}
+          {editGloss && <textarea aria-label="修改中文释义" rows={3} value={enrichment?.definitionsZh?.join('\n') || ''} onChange={event => { setManualGloss(true); const definitionsZh = event.target.value.split('\n'); setEnrichment(current => ({ ...current, definitions: [], examples: [], definitionsZh, provider: 'manual', aiPending: false, aiNote: undefined, aiUncertain: false })) }} />}
           {enrichment ? (
             <div className="enrich-body">
               {enrichment.phonetic && <p className="phonetic">{enrichment.phonetic}</p>}
@@ -349,6 +380,7 @@ export function CaptureModal({
               {enrichment.definitionsZh?.length ? (
                 <p className="zh-def">{enrichment.definitionsZh.join('；')}</p>
               ) : null}
+              {enrichment.aiNote && <p className="muted tiny">{enrichment.aiUncertain ? '待确认：' : ''}{enrichment.aiNote}</p>}
               {enrichment.definitions.slice(0, 2).map((d) => (
                 <p key={d} className="def">
                   {d}

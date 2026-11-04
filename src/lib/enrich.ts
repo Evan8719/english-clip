@@ -84,6 +84,7 @@ export async function ensureZhEnrichment(
       provider: 'manual' as const,
     } satisfies Enrichment)
 
+  if (base.provider?.startsWith('ai-') || base.aiPending) return base
   return attachZh(text, base)
 }
 

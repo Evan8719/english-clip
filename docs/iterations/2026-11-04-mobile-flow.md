@@ -26,3 +26,11 @@ Superdesign：检查并使用已安装固定 CLI 0.14.0；用户明确批准指�
 真实 YouTube 官方公开演示视频已通过内嵌播放检查：点击后播放时间推进至约 6.4 秒；这不等于所有地区、所有公开视频均可嵌入。
 
 熟悉程度按钮改为 SVG 图标主导（循环、眼睛、勾）与小字号标签；卡片左滑下一张、右滑上一张，浏览不改评分，保留按钮供桌面/键盘操作。
+
+
+### 原句释义与 Gemini 选项
+
+- 原先单靠词典命中可能取错义项。新增按英文、原句、来源生成中文解释，标注服务及不确定性；可人工改写并锁定，保存不等待网络，后台补全。保留本地词典离线能力。
+- 服务层支持 DeepSeek 与 Gemini，独立加密密钥、账号级选择，覆盖释义、流式对话、素材重点。Gemini 使用官方 OpenAI 兼容端点，模型 gemini-3.8-flash / low reasoning；配置入口提示订阅与 API 计费分开。
+- 单元验证两种服务的请求格式、原句传递、流式增量、未知词提示、损坏或截断返回、脱敏错误。隔离 API 验证身份、无密钥阻止、加密保存、选择与删除；浏览器验证快速保存与后台填义、手改不覆盖和 Gemini 设置。外部 Gemini 尚无用户密钥，以上不等于真实 Gemini 调用通过。
+- 官方依据：[兼容接口](https://aistudio.google.com/docs/openai)、[模型](https://aistudio.google.com/docs/models/gemini-3.8-flash)、[订阅和 API 区别](https://aistudio.google.com/docs/google-ai-plans)。

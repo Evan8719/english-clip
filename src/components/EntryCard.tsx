@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Entry, Familiarity } from '../types'
 import { frequencyLabel } from '../lib/lexicon'
 import { ensureZhEnrichment } from '../lib/enrich'
@@ -37,6 +37,7 @@ export function EntryCard({
   const [editingSentence, setEditingSentence] = useState(false)
   const [sentenceDraft, setSentenceDraft] = useState(entry.mySentence ?? '')
   const [savingSentence, setSavingSentence] = useState(false)
+  useEffect(() => { setZh(entry.enrichment?.definitionsZh || []) }, [entry.enrichment?.definitionsZh])
 
   const kindLabel =
     entry.kind === 'word' ? '单词' : entry.kind === 'phrase' ? '短语' : '句子'
@@ -106,8 +107,9 @@ export function EntryCard({
 
         <div className="flip-face flip-back">
           <p className="headword headword-back">{entry.text}</p>
+          {entry.enrichment?.aiPending && <p className="muted">正在按原句补充 AI 释义…</p>}
           {loadingZh && <p className="muted">正在获取释义…</p>}
-          {!loadingZh && zh.length > 0 && (
+          {!entry.enrichment?.aiPending && !loadingZh && zh.length > 0 && (
             <div className="zh-defs">
               {zh.map((line) => (
                 <p key={line} className="zh-def">
@@ -116,9 +118,10 @@ export function EntryCard({
               ))}
             </div>
           )}
-          {!loadingZh && zh.length === 0 && (
+          {!entry.enrichment?.aiPending && !loadingZh && zh.length === 0 && (
             <p className="muted">暂无中文释义。可填写「我的理解」。</p>
           )}
+          {(entry.enrichment?.provider?.startsWith('ai-') || entry.enrichment?.aiNote) && <p className="definition-provenance">{entry.enrichment.provider?.startsWith('ai-') ? 'AI' : '词典参考'} · {entry.enrichment.aiUncertain ? '用法待确认' : '结合原句'}{entry.enrichment.aiNote ? ` · ${entry.enrichment.aiNote}` : ''}</p>}
           {entry.sourceDetail && (
             <p className="note">详情：{entry.sourceDetail}</p>
           )}

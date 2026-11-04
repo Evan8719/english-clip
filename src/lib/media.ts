@@ -109,6 +109,12 @@ export async function deleteAiKey(provider = 'openai'): Promise<void> {
   await request(`/api/ai/key?provider=${provider}`, { method: 'DELETE' })
 }
 export async function deepseekConfigured(): Promise<boolean> { return (await request<{ deepseekConfigured: boolean }>('/api/ai/status')).deepseekConfigured }
+export interface AiStatus { configured: boolean; deepseekConfigured: boolean; geminiConfigured: boolean; assistantProvider: 'deepseek' | 'gemini'; assistantConfigured: boolean; chatProvider: string; model: string }
+export const getAiStatus = () => request<AiStatus>('/api/ai/status')
+export const chooseAiProvider = (provider: 'deepseek' | 'gemini') => request('/api/ai/provider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider }) })
+export async function explainWithAi(text: string, context: string, source: string, signal?: AbortSignal) {
+  return (await request<{ explanation: { definitionsZh: string[]; note: string; uncertain: boolean; provider: 'deepseek' | 'gemini' } }>('/api/ai/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, context, source }), signal })).explanation
+}
 
 export async function chatWithAi(message: string, focus: string, history: Array<{ role: 'user' | 'assistant'; content: string }>, onDelta: (delta: string) => void, signal?: AbortSignal): Promise<void> {
   const response = await authorizedApiFetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, focus, history }), signal })
