@@ -10,6 +10,12 @@
 set -eu
 
 DIR=${EC_APP_DIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+# A publisher holds this directory while taking a stopped-writer backup.
+# Only the publisher may explicitly start the verified release under its lock.
+if [ -d "$DIR/releases/.publish-lock" ] && [ "${EC_PUBLISH_START:-0}" != "1" ]; then
+  echo "发布进行中，暂缓启动"
+  exit 0
+fi
 NODE=${EC_NODE:-/usr/bin/node}
 PIDFILE=$DIR/logs/ec.pid
 LOG=$DIR/logs/server.log

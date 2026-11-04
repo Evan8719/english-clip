@@ -4,6 +4,7 @@
 set -eu
 
 DIR=${EC_APP_DIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+[ -d "$DIR/releases/.publish-lock" ] && exit 0
 LOG=$DIR/logs/server.log
 PORT=${EC_PORT:-4188}
 
