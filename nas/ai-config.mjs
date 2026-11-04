@@ -2,10 +2,11 @@ import { request } from 'node:https'
 import { lookup } from 'node:dns'
 import { isIP } from 'node:net'
 import { Readable } from 'node:stream'
+import { proxyFetch, connectionMode, aiNetworkError } from './ai-network.mjs'
 
 export const AI_PRESETS = {
-  deepseek: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-flash', thinking: 'disabled', reasoningEffort: 'default' },
-  gemini: { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-3.8-flash', thinking: 'default', reasoningEffort: 'low' },
+  deepseek: { baseUrl: 'https://api.deepseek.com', model: 'deepseek-flash', thinking: 'disabled', reasoningEffort: 'default', networkMode: 'auto' },
+  gemini: { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-3.8-flash', thinking: 'default', reasoningEffort: 'low', networkMode: 'auto' },
 }
 const invalid = message => Object.assign(Error(message), { status: 400 })
 
@@ -22,7 +23,9 @@ export function normalizeAiSettings(provider, input = {}) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(model)) throw invalid('请输入模型 ID，不能包含空格')
   const thinking = input.thinking ?? defaults.thinking, reasoningEffort = input.reasoningEffort ?? defaults.reasoningEffort
   if (!['default', 'disabled', 'enabled'].includes(thinking) || !['default', 'low', 'medium', 'high'].includes(reasoningEffort)) throw invalid('回复方式无效')
-  return { baseUrl, model, thinking, reasoningEffort }
+  const networkMode = input.networkMode ?? 'auto'
+  if (!['auto', 'direct', 'proxy'].includes(networkMode)) throw invalid('连接方式无效')
+  return { baseUrl, model, thinking, reasoningEffort, networkMode }
 }
 
 export function normalizeApiKey(value) {
@@ -65,5 +68,16 @@ function publicHttpsFetch(url, init) {
 }
 
 export function aiFetcher(config, fetcher = fetch) {
-  return fetcher !== fetch || Object.values(AI_PRESETS).some(preset => config.baseUrl === preset.baseUrl) ? fetcher : publicHttpsFetch
+  return async (url, init) => {
+    try {
+      if (fetcher !== fetch) return await fetcher(url, init)
+      const route = connectionMode(config)
+      const standard = Object.values(AI_PRESETS).some(preset => config.baseUrl === preset.baseUrl)
+      if (route.useProxy) {
+        if (!route.available) throw Object.assign(Error('NAS 尚未配置出网代理；可选择直接连接，或先配置可用代理'), { status: 409 })
+        return await proxyFetch(url, init, { proxyUrl: process.env.EC_AI_PROXY_URL, lookup: publicLookup, pinTarget: !standard })
+      }
+      return await (standard ? fetch : publicHttpsFetch)(url, init)
+    } catch (error) { throw aiNetworkError(error) }
+  }
 }

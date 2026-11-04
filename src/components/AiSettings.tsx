@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { chooseAiProvider, deleteAiKey, getAiStatus, saveAiSettings, testAiConnection } from '../lib/media'
+import { chooseAiProvider, deleteAiKey, getAiStatus, getAiModels, saveAiSettings, testAiConnection } from '../lib/media'
 import type { AiProvider, AiServiceSettings, AiStatus } from '../lib/media'
 
 export function AiSettings({ loggedIn }: { loggedIn: boolean }) {
@@ -9,10 +9,11 @@ export function AiSettings({ loggedIn }: { loggedIn: boolean }) {
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState('')
   const [message, setMessage] = useState('')
+  const [models, setModels] = useState<string[]>([])
   const [error, setError] = useState(false)
   const feedback = useRef<HTMLDivElement>(null)
   const saved = status?.services[provider]
-  const dirty = Boolean(key || (draft && saved && ['baseUrl', 'model', 'thinking', 'reasoningEffort'].some(field => draft[field as keyof AiServiceSettings] !== saved[field as keyof AiServiceSettings])))
+  const dirty = Boolean(key || (draft && saved && ['baseUrl', 'model', 'thinking', 'reasoningEffort', 'networkMode'].some(field => draft[field as keyof AiServiceSettings] !== saved[field as keyof AiServiceSettings])))
   const addressChanged = Boolean(draft && saved?.configured && draft.baseUrl.replace(/\/+$/, '') !== saved.baseUrl)
   useEffect(() => { if (message) feedback.current?.scrollIntoView({ block: 'nearest' }) }, [message])
 
@@ -34,7 +35,7 @@ export function AiSettings({ loggedIn }: { loggedIn: boolean }) {
   }
   function select(next: AiProvider) {
     if (busy || next === provider) return
-    setProvider(next); setDraft(status?.services[next] || null); setKey(''); setMessage(''); setError(false)
+    setModels([]); setProvider(next); setDraft(status?.services[next] || null); setKey(''); setMessage(''); setError(false)
   }
   async function reload() {
     const value = await getAiStatus()
@@ -48,12 +49,13 @@ export function AiSettings({ loggedIn }: { loggedIn: boolean }) {
       <div className="ai-settings-tabs" role="group" aria-label="配置 AI 服务">{(['deepseek', 'gemini'] as const).map(name => <button key={name} type="button" className={provider === name ? 'chip active' : 'chip'} aria-pressed={provider === name} disabled={Boolean(busy)} onClick={() => select(name)}>{name === 'gemini' ? 'Gemini' : 'DeepSeek'}</button>)}</div>
       {draft && <fieldset disabled={Boolean(busy)} className="ai-settings-fields">
         <label className="field"><span>接口地址</span><input type="url" aria-label="AI 接口地址" value={draft.baseUrl} onChange={e => setDraft({ ...draft, baseUrl: e.target.value })} spellCheck={false} autoCapitalize="none" /></label>
-        <label className="field"><span>模型 ID</span><input aria-label="AI 模型 ID" value={draft.model} onChange={e => setDraft({ ...draft, model: e.target.value })} spellCheck={false} autoCapitalize="none" /></label>
+        <label className="field"><span>模型 ID</span><input list="ai-model-options" aria-label="AI 模型 ID" value={draft.model} onChange={e => setDraft({ ...draft, model: e.target.value })} spellCheck={false} autoCapitalize="none" /><datalist id="ai-model-options">{models.map(model => <option key={model} value={model} />)}</datalist><button className="redesign-text-button" type="button" disabled={!saved?.configured || dirty} onClick={() => void action('models', async () => { const value = await getAiModels(provider); setModels(value.models); return `已读取 ${value.models.length} 个模型，可在模型 ID 中选择；具体调用权限以测试为准` })}>读取可用模型</button></label>
+        <label className="field"><span>连接方式</span><select aria-label="AI 连接方式" value={draft.networkMode} onChange={e => setDraft({ ...draft, networkMode: e.target.value as AiServiceSettings['networkMode'] })}><option value="auto">自动选择</option><option value="direct">NAS 直接连接</option><option value="proxy">通过 NAS 出网代理</option></select><small className="muted">{saved?.proxyAvailable ? `代理已配置：${saved.proxyLabel}` : 'NAS 尚未配置代理；电脑代理不会自动应用到 NAS'}</small></label>
         <label className="field"><span>回复方式</span>{provider === 'gemini' ? <select aria-label="AI 回复方式" value={draft.reasoningEffort} onChange={e => setDraft({ ...draft, reasoningEffort: e.target.value as AiServiceSettings['reasoningEffort'] })}><option value="default">模型默认</option><option value="low">简短思考</option><option value="medium">适中思考</option><option value="high">深入思考</option></select> : <select aria-label="AI 回复方式" value={draft.thinking} onChange={e => setDraft({ ...draft, thinking: e.target.value as AiServiceSettings['thinking'] })}><option value="disabled">快速回复</option><option value="enabled">深度思考</option><option value="default">模型默认</option></select>}</label>
         <label className="field"><span>API 密钥 <small className="muted">{saved?.configured ? '已加密保存' : '尚未保存'}</small></span><input type="password" aria-label={`${provider === 'gemini' ? 'Gemini' : 'DeepSeek'} API 密钥`} autoComplete="new-password" autoCapitalize="none" spellCheck={false} value={key} placeholder={saved?.configured ? '留空保留已有密钥' : '粘贴完整密钥'} onChange={e => setKey(e.target.value)} /></label>
         {addressChanged && <p className="muted tiny">接口地址已更改，请重新填写用于该服务的密钥。</p>}
         <div className="ai-settings-actions">
-          <button className="primary" type="button" onClick={() => void action('save', async () => { const value = await saveAiSettings(provider, draft, key); setStatus(current => current ? { ...current, services: { ...current.services, [provider]: value.settings } } : current); setDraft(value.settings); setKey(''); return value.settings.configured ? '设置和密钥已加密保存，尚未验证调用。' : '设置已保存，添加密钥后可测试连接。' })}>{busy === 'save' ? '保存中…' : '保存设置'}</button>
+          <button className="primary" type="button" onClick={() => void action('save', async () => { const value = await saveAiSettings(provider, draft, key); setStatus(current => current ? { ...current, services: { ...current.services, [provider]: { ...current.services[provider], ...value.settings } } } : current); setDraft(value.settings); setKey(''); return value.settings.configured ? '设置和密钥已加密保存，尚未验证调用。' : '设置已保存，添加密钥后可测试连接。' })}>{busy === 'save' ? '保存中…' : '保存设置'}</button>
           <button className="ghost" type="button" disabled={!saved?.configured || dirty} onClick={() => void action('test', async () => { const value = await testAiConnection(provider); return `连接成功 · ${value.result.model} · ${(value.result.latencyMs / 1000).toFixed(1)} 秒` })}>{busy === 'test' ? '测试中…' : '测试连接'}</button>
           <button className="ghost" type="button" disabled={!saved?.configured || dirty || status?.assistantProvider === provider} onClick={() => void action('choose', async () => { await chooseAiProvider(provider); setStatus(current => current ? { ...current, assistantProvider: provider } : current); return '已设为当前 AI 服务' })}>设为当前服务</button>
         </div>

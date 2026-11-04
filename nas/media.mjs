@@ -1,4 +1,5 @@
-import { streamConversation, explainExpression, assistantConfig, testAssistant } from './deepseek.mjs'
+import { streamConversation, explainExpression, assistantConfig, testAssistant, listAssistantModels } from './deepseek.mjs'
+import { connectionMode } from './ai-network.mjs'
 import { createDailyLearningApi } from './daily-learning.mjs'
 import { AI_PRESETS, normalizeAiSettings, normalizeApiKey } from './ai-config.mjs'
 import { generateStudyGuide } from './study-guide.mjs'
@@ -219,7 +220,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     if (path === '/api/ai/status' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
       const provider = providerFor(user.id)
-      const services = Object.fromEntries(Object.keys(AI_PRESETS).map(name => [name, { ...configFor(user.id, name), configured: Boolean(readKey(user.id, name)) }]))
+      const services = Object.fromEntries(Object.keys(AI_PRESETS).map(name => { const config = configFor(user.id, name), route = connectionMode({ ...config, provider: name }); return [name, { ...config, configured: Boolean(readKey(user.id, name)), route: route.useProxy ? 'proxy' : 'direct', proxyAvailable: route.available, proxyLabel: route.label }] }))
       return sendJson(res, 200, { ok: true, configured: Boolean(readKey(user.id)), deepseekConfigured: services.deepseek.configured, geminiConfigured: services.gemini.configured, assistantProvider: provider, assistantConfigured: services[provider].configured, chatProvider: assistantConfig(provider).name, model: services[provider].model, services, presets: AI_PRESETS })
     }
     if (path === '/api/ai/key' && req.method === 'POST') {
@@ -252,6 +253,14 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       try { return sendJson(res, 200, { ok: true, result: await testAssistant({ apiKey, provider, settings }) }) }
       catch (error) { throw Object.assign(Error(error.name === 'TimeoutError' || error.name === 'AbortError' ? '连接服务超时，请检查网络和接口地址' : error.message), { status: 502 }) }
       finally { recentChat.delete(user.id) }
+    }
+    if (path === '/api/ai/models' && req.method === 'POST') {
+      if (!user) return reject(res, 401, '未登录')
+      const body = await readBody(req), provider = body.provider || providerFor(user.id)
+      const settings = configFor(user.id, provider), apiKey = readKey(user.id, provider)
+      if (!apiKey) return reject(res, 409, '请先保存该服务的密钥')
+      const models = await listAssistantModels({ apiKey, provider, settings })
+      return sendJson(res, 200, { ok: true, models })
     }
     if (path === '/api/ai/key' && req.method === 'DELETE') {
       if (!user) return reject(res, 401, '未登录')

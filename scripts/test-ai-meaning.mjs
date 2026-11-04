@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { explainExpression, streamConversation, testAssistant } from '../nas/deepseek.mjs'
+import { explainExpression, streamConversation, testAssistant, providerHttpError, listAssistantModels } from '../nas/deepseek.mjs'
+import { aiNetworkError, connectionMode } from '../nas/ai-network.mjs'
 import { normalizeAiSettings, normalizeApiKey, publicAddress, publicLookup } from '../nas/ai-config.mjs'
 
 for (const provider of ['deepseek', 'gemini']) {
@@ -50,4 +51,18 @@ for (const address of ['127.0.0.1', '10.0.0.1', '169.254.169.254', '172.16.0.2',
 for (const address of ['8.8.8.8', '2607:f8b0:4005:80a::200e']) assert.equal(publicAddress(address), true)
 await new Promise(resolve => publicLookup('api.example.test', {}, error => { assert.ok(error); resolve() }, (_host, _options, done) => done(null, [{ address: '127.0.0.1', family: 4 }])))
 await new Promise(resolve => publicLookup('api.example.test', { all: true }, (error, addresses) => { assert.equal(error, null); assert.equal(addresses[0].address, '8.8.8.8'); resolve() }, (_host, _options, done) => done(null, [{ address: '8.8.8.8', family: 4 }])))
+assert.match(aiNetworkError(new TypeError('fetch failed', { cause: { code: 'UND_ERR_CONNECT_TIMEOUT' } })).message, /NAS.*超时/)
+assert.match(aiNetworkError(Object.assign(Error('private details'), { code: 'ECONNREFUSED' })).message, /代理电脑/)
+const beforeProxy = process.env.EC_AI_PROXY_URL
+process.env.EC_AI_PROXY_URL = 'http://proxy.example.test'
+assert.equal(connectionMode({ provider: 'gemini', networkMode: 'auto' }).useProxy, true)
+assert.equal(connectionMode({ provider: 'deepseek', networkMode: 'auto' }).useProxy, false)
+assert.equal(connectionMode({ provider: 'gemini', networkMode: 'direct' }).useProxy, false)
+if (beforeProxy === undefined) delete process.env.EC_AI_PROXY_URL; else process.env.EC_AI_PROXY_URL = beforeProxy
+for (const [status, message, expected] of [[503, 'high demand', /模型当前繁忙/], [429, 'quota limit: 0', /额度为 0/], [404, 'no longer available to new users', /新用户/], [400, 'thinking not supported', /模型默认/]]) {
+  const error = await providerHttpError(Response.json([{ error: { message, status: 'ERROR' } }], { status }), 'gemini')
+  assert.match(error.message, expected); assert.equal(error.status, 502)
+}
+const listed = await listAssistantModels({ provider: 'gemini', apiKey: 'test-only', fetcher: async () => Response.json({ models: [{ name: 'models/my-model' }, { name: 'models/my-model' }, { name: 'bad model' }] }) })
+assert.deepEqual(listed, ['my-model'])
 console.log(JSON.stringify({ ok: true, providers: ['DeepSeek', 'Gemini'], checks: ['context preserved', 'provider request format', 'streaming', 'uncertainty', 'invalid/truncated response', 'safe errors'], externalCalls: false }))
