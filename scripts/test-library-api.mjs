@@ -7,7 +7,8 @@ import { streamConversation } from '../nas/deepseek.mjs'
 
 const data = resolve(`work/library-api-test-${process.pid}`), port = 44000 + process.pid % 9000
 mkdirSync(data, { recursive: true })
-const child = spawn(process.execPath, ['nas/server.mjs'], { env: { ...process.env, EC_DATA_DIR: data, EC_WEB_DIR: resolve('dist'), EC_HOST: '127.0.0.1', EC_PORT: String(port) }, windowsHide: true, stdio: 'ignore' })
+const start = () => spawn(process.execPath, ['nas/server.mjs'], { env: { ...process.env, EC_DATA_DIR: data, EC_WEB_DIR: resolve('dist'), EC_HOST: '127.0.0.1', EC_PORT: String(port) }, windowsHide: true, stdio: 'ignore' })
+let child = start()
 const pause = (ms) => new Promise((r) => setTimeout(r, ms))
 async function api(path, token = '', method = 'GET', body) {
   const res = await fetch(`http://127.0.0.1:${port}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
@@ -21,11 +22,22 @@ try {
   assert.equal((await api('/api/ai/explain', '', 'POST', { text: 'fine' })).status, 401)
   assert.equal((await api('/api/ai/explain', token, 'POST', { text: 'fine' })).status, 409)
   assert.equal((await api('/api/ai/provider', token, 'POST', { provider: 'gemini' })).status, 409)
+  assert.equal((await api('/api/ai/test', token, 'POST', { provider: 'gemini' })).status, 409)
   const geminiTestKey = 'AIzaTEST_ONLY_NOT_A_REAL_KEY_123456789'
   assert.equal((await api('/api/ai/key', token, 'POST', { provider: 'gemini', apiKey: geminiTestKey })).status, 200)
   assert.ok(!readFileSync(join(data, 'media', 'ai-keys.json'), 'utf8').includes(geminiTestKey))
   assert.equal((await api('/api/ai/provider', token, 'POST', { provider: 'gemini' })).status, 200)
   assert.equal((await api('/api/ai/status', token)).data.assistantProvider, 'gemini')
+  const initial = (await api('/api/ai/status', token)).data.services.gemini
+  const newAuthKey = 'AQ.TEST_ONLY_' + 'x'.repeat(600)
+  const custom = { ...initial, baseUrl: 'https://gateway.example.test/v1', model: 'my/model-id', reasoningEffort: 'default' }
+  assert.equal((await api('/api/ai/settings', token, 'POST', { provider: 'gemini', ...custom })).status, 409)
+  assert.equal((await api('/api/ai/settings', token, 'POST', { provider: 'gemini', ...custom, apiKey: newAuthKey })).status, 200)
+  assert.ok(!readFileSync(join(data, 'media', 'ai-keys.json'), 'utf8').includes(newAuthKey))
+  assert.equal((await api('/api/ai/status', token)).data.services.gemini.model, 'my/model-id')
+  assert.equal((await api('/api/ai/settings', token, 'POST', { provider: 'gemini', ...custom, model: 'another-model' })).data.settings.configured, true)
+  assert.equal((await api('/api/ai/settings', token, 'POST', { provider: 'gemini', ...custom, baseUrl: 'http://127.0.0.1' })).status, 400)
+  assert.equal((await api('/api/ai/settings', token, 'POST', { provider: 'gemini', ...custom, apiKey: 'bad\ncredential' })).status, 400)
   assert.equal((await api('/api/ai/explain', token, 'POST', { text: '' })).status, 400)
   await api('/api/ai/key?provider=gemini', token, 'DELETE')
   const bookmark = { title: 'Collected English video', kind: 'link', sourceUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE', source: 'YouTube' }
@@ -97,5 +109,12 @@ try {
   await streamConversation(null, res, { apiKey: 'test', body: { message: 'Hello' }, fetcher })
   assert.equal(beforeEnd, true); assert.equal(requestBody.model, 'deepseek-flash'); assert.equal(requestBody.thinking.type, 'disabled')
   assert.ok(chunks.at(-1).includes('"done":true'))
+  await api('/api/ai/key', token, 'POST', { provider: 'gemini', apiKey: newAuthKey })
+  child.kill(); await pause(150); child = start()
+  for (let i = 0; i < 50; i++) { try { await api('/health'); break } catch { await pause(100) } }
+  const restored = (await api('/api/ai/status', token)).data
+  assert.equal(restored.services.gemini.model, 'another-model')
+  assert.equal(restored.services.gemini.baseUrl, custom.baseUrl)
+  assert.equal(restored.geminiConfigured, true)
   console.log(JSON.stringify({ ok: true, checks: ['collected links and prepared lessons separated', 'URL validation and deduplication', 'word timestamps survive roundtrip', 'book chapters and progress', 'content deduplication', 'private account isolation', 'encrypted separate DeepSeek key', 'local queue claim and completion', 'timestamp segments', 'incremental AI stream before completion'] }))
 } finally { child.kill(); await pause(100) }

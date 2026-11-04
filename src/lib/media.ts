@@ -102,16 +102,26 @@ export async function aiKeyConfigured(): Promise<boolean> {
 }
 
 export async function saveAiKey(apiKey: string, provider = 'openai'): Promise<void> {
-  await request('/api/ai/key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, provider }) })
+  await aiSettingsRequest('/api/ai/key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, provider }) })
 }
 
 export async function deleteAiKey(provider = 'openai'): Promise<void> {
-  await request(`/api/ai/key?provider=${provider}`, { method: 'DELETE' })
+  await aiSettingsRequest(`/api/ai/key?provider=${provider}`, { method: 'DELETE' })
 }
 export async function deepseekConfigured(): Promise<boolean> { return (await request<{ deepseekConfigured: boolean }>('/api/ai/status')).deepseekConfigured }
-export interface AiStatus { configured: boolean; deepseekConfigured: boolean; geminiConfigured: boolean; assistantProvider: 'deepseek' | 'gemini'; assistantConfigured: boolean; chatProvider: string; model: string }
-export const getAiStatus = () => request<AiStatus>('/api/ai/status')
-export const chooseAiProvider = (provider: 'deepseek' | 'gemini') => request('/api/ai/provider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider }) })
+export type AiProvider = 'deepseek' | 'gemini'
+export interface AiServiceSettings { baseUrl: string; model: string; thinking: 'default' | 'disabled' | 'enabled'; reasoningEffort: 'default' | 'low' | 'medium' | 'high' }
+export interface AiStatus { configured: boolean; deepseekConfigured: boolean; geminiConfigured: boolean; assistantProvider: AiProvider; assistantConfigured: boolean; chatProvider: string; model: string; services: Record<AiProvider, AiServiceSettings & { configured: boolean }>; presets: Record<AiProvider, AiServiceSettings> }
+async function aiSettingsRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const controller = new AbortController(), timer = window.setTimeout(() => controller.abort(), path === '/api/ai/test' ? 20000 : 12000)
+  try { return await request<T>(path, { ...init, signal: controller.signal }) }
+  catch (error) { if (controller.signal.aborted) throw Error('连接超时，操作结果未确认；请重新读取状态后重试'); if (error instanceof TypeError) throw Error('无法连接 NAS，请检查网络后重试'); if (error instanceof SyntaxError) throw Error('NAS 返回异常，请刷新页面后重试'); throw error }
+  finally { window.clearTimeout(timer) }
+}
+export const getAiStatus = () => aiSettingsRequest<AiStatus>('/api/ai/status')
+export const saveAiSettings = (provider: AiProvider, settings: AiServiceSettings, apiKey: string) => aiSettingsRequest<{ settings: AiServiceSettings & { configured: boolean } }>('/api/ai/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, ...settings, ...(apiKey ? { apiKey } : {}) }) })
+export const testAiConnection = (provider: AiProvider) => aiSettingsRequest<{ result: { model: string; latencyMs: number } }>('/api/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider }) })
+export const chooseAiProvider = (provider: AiProvider) => aiSettingsRequest('/api/ai/provider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider }) })
 export async function explainWithAi(text: string, context: string, source: string, signal?: AbortSignal) {
   return (await request<{ explanation: { definitionsZh: string[]; note: string; uncertain: boolean; provider: 'deepseek' | 'gemini' } }>('/api/ai/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, context, source }), signal })).explanation
 }

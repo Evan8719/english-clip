@@ -355,3 +355,17 @@ body, .redesign-shell, .redesign-home .home-controls, .library-controls { backgr
 .definition-provenance { color:#586b70; font-size:.75rem; line-height:1.7; margin:10px 0; }
 .ai-provider-select { display:flex; gap:12px; align-items:center; margin-block:16px; }
 .ai-provider-select select { min-height:44px; padding:8px 14px; background:#fff; color:#253e78; border:1px solid #dfe3eb; border-radius:10px; }
+
+/* Editable AI connections: feedback stays beside the operation. */
+.ai-settings-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ai-settings-tabs { display: flex; gap: 8px; margin: 12px 0 18px; }
+.ai-settings-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ai-settings-fields .field { margin-bottom: 14px; }
+.ai-settings-fields .field > span { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ai-settings-fields input, .ai-settings-fields select { width: 100%; min-width: 0; font-size: 16px; }
+.ai-settings-actions, .ai-settings-secondary { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ai-settings-secondary { margin-top: 12px; gap: 18px; }
+.ai-settings-feedback { margin: 12px 0 6px; font-size: 14px; line-height: 1.5; color: #38674e; overflow-wrap: anywhere; scroll-margin-block: 80px; }
+.ai-settings-feedback.error { color: #a3423d; }
+
+.ai-settings-fields select { border: 1px solid #dae0e9; border-radius: 14px; padding: 12px; background: #fff; color: inherit; font-family: inherit; line-height: 1.4; }

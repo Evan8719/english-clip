@@ -1,4 +1,5 @@
-import { streamConversation, explainExpression, assistantConfig } from './deepseek.mjs'
+import { streamConversation, explainExpression, assistantConfig, testAssistant } from './deepseek.mjs'
+import { AI_PRESETS, normalizeAiSettings, normalizeApiKey } from './ai-config.mjs'
 import { generateStudyGuide } from './study-guide.mjs'
 import { catalogItem, writeCatalogIndex } from './catalog-library.mjs'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
@@ -51,6 +52,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
   const preferences = existsSync(preferencesFile) ? JSON.parse(readFileSync(preferencesFile, 'utf8')) : {}
   const explanationCache = new Map(), explanationLimits = new Map()
   const providerFor = uid => preferences[uid]?.provider === 'gemini' ? 'gemini' : 'deepseek'
+  const configFor = (uid, provider) => normalizeAiSettings(provider, preferences[uid]?.services?.[provider] || {})
   const keyId = (uid, provider) => ['deepseek', 'gemini'].includes(provider) ? `${uid}:${provider}` : uid
   const recentChat = new Map()
   const guideJobs = new Set()
@@ -81,7 +83,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     if (!key || !item.transcript || item.kind === 'book' || guideJobs.has(item.id)) return
     const transcript = item.transcript
     guideJobs.add(item.id); item.guideStatus = 'processing'; item.guideError = ''; save()
-    try { const guide = await generateStudyGuide({ ...item, transcript }, key, fetch, provider); if (item.transcript === transcript) { item.studyGuide = guide; item.guideStatus = 'ready' } }
+    try { const guide = await generateStudyGuide({ ...item, transcript }, key, fetch, provider, configFor(item.ownerId, provider)); if (item.transcript === transcript) { item.studyGuide = guide; item.guideStatus = 'ready' } }
     catch (error) { item.guideStatus = 'failed'; item.guideError = error.message }
     finally { guideJobs.delete(item.id); save() }
   }
@@ -90,11 +92,21 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     const encrypted = keys[keyId(uid, provider)]
     if (!encrypted) return ''
     try {
-      const [iv, tag, data] = encrypted.split('.')
+      const stored = typeof encrypted === 'string' ? { ciphertext: encrypted, baseUrl: AI_PRESETS[provider]?.baseUrl } : encrypted
+      if (AI_PRESETS[provider] && stored.baseUrl !== configFor(uid, provider).baseUrl) return ''
+      const [iv, tag, data] = stored.ciphertext.split('.')
       const decipher = createDecipheriv('aes-256-gcm', encryptionKey, Buffer.from(iv, 'hex'))
       decipher.setAuthTag(Buffer.from(tag, 'hex'))
       return Buffer.concat([decipher.update(Buffer.from(data, 'hex')), decipher.final()]).toString('utf8')
     } catch { return '' }
+  }
+
+  function storeKey(uid, provider, key, baseUrl) {
+    const iv = randomBytes(12), cipher = createCipheriv('aes-256-gcm', encryptionKey, iv)
+    const data = Buffer.concat([cipher.update(key, 'utf8'), cipher.final()])
+    const ciphertext = `${iv.toString('hex')}.${cipher.getAuthTag().toString('hex')}.${data.toString('hex')}`
+    keys[keyId(uid, provider)] = AI_PRESETS[provider] ? { ciphertext, baseUrl } : ciphertext
+    saveKeys()
   }
 
   async function transcribe(item, apiKey) {
@@ -203,21 +215,40 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     }
     if (path === '/api/ai/status' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
-      return sendJson(res, 200, { ok: true, configured: Boolean(readKey(user.id)), deepseekConfigured: Boolean(readKey(user.id, 'deepseek')), geminiConfigured: Boolean(readKey(user.id, 'gemini')), assistantProvider: providerFor(user.id), assistantConfigured: Boolean(readKey(user.id, providerFor(user.id))), chatProvider: assistantConfig(providerFor(user.id)).name, model: assistantConfig(providerFor(user.id)).options.model })
+      const provider = providerFor(user.id)
+      const services = Object.fromEntries(Object.keys(AI_PRESETS).map(name => [name, { ...configFor(user.id, name), configured: Boolean(readKey(user.id, name)) }]))
+      return sendJson(res, 200, { ok: true, configured: Boolean(readKey(user.id)), deepseekConfigured: services.deepseek.configured, geminiConfigured: services.gemini.configured, assistantProvider: provider, assistantConfigured: services[provider].configured, chatProvider: assistantConfig(provider).name, model: services[provider].model, services, presets: AI_PRESETS })
     }
     if (path === '/api/ai/key' && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
       const body = await readBody(req)
       const provider = ['deepseek', 'gemini'].includes(body.provider) ? body.provider : 'openai'
-      const id = keyId(user.id, provider)
-      const key = String(body.apiKey || '').trim()
-      if (!(provider === 'gemini' ? /^AIza[\w-]{20,}$/.test(key) : key.startsWith('sk-')) || key.length > 300) return reject(res, 400, 'API 密钥格式不正确')
-      const iv = randomBytes(12)
-      const cipher = createCipheriv('aes-256-gcm', encryptionKey, iv)
-      const data = Buffer.concat([cipher.update(key, 'utf8'), cipher.final()])
-      keys[id] = `${iv.toString('hex')}.${cipher.getAuthTag().toString('hex')}.${data.toString('hex')}`
-      saveKeys()
+      const key = normalizeApiKey(body.apiKey)
+      storeKey(user.id, provider, key, AI_PRESETS[provider] ? configFor(user.id, provider).baseUrl : undefined)
       return sendJson(res, 200, { ok: true, configured: true })
+    }
+    if (path === '/api/ai/settings' && req.method === 'POST') {
+      if (!user) return reject(res, 401, '未登录')
+      const body = await readBody(req), provider = body.provider
+      const settings = normalizeAiSettings(provider, body)
+      const old = configFor(user.id, provider), oldKey = readKey(user.id, provider)
+      const key = body.apiKey ? normalizeApiKey(body.apiKey) : ''
+      if (oldKey && settings.baseUrl !== old.baseUrl && !key) return reject(res, 409, '更改接口地址后，请重新填写密钥')
+      if (key) storeKey(user.id, provider, key, settings.baseUrl)
+      preferences[user.id] = { ...preferences[user.id], services: { ...preferences[user.id]?.services, [provider]: settings } }
+      atomicJson(preferencesFile, preferences)
+      return sendJson(res, 200, { ok: true, settings: { ...settings, configured: Boolean(readKey(user.id, provider)) } })
+    }
+    if (path === '/api/ai/test' && req.method === 'POST') {
+      if (!user) return reject(res, 401, '未登录')
+      const body = await readBody(req), provider = body.provider || providerFor(user.id)
+      const settings = configFor(user.id, provider), apiKey = readKey(user.id, provider)
+      if (!apiKey) return reject(res, 409, '请先保存该服务的密钥')
+      if (recentChat.get(user.id)) return reject(res, 429, '当前回答或测试尚未完成')
+      recentChat.set(user.id, true)
+      try { return sendJson(res, 200, { ok: true, result: await testAssistant({ apiKey, provider, settings }) }) }
+      catch (error) { throw Object.assign(Error(error.name === 'TimeoutError' || error.name === 'AbortError' ? '连接服务超时，请检查网络和接口地址' : error.message), { status: 502 }) }
+      finally { recentChat.delete(user.id) }
     }
     if (path === '/api/ai/key' && req.method === 'DELETE') {
       if (!user) return reject(res, 401, '未登录')
@@ -230,7 +261,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       const body = await readBody(req)
       if (!['deepseek', 'gemini'].includes(body.provider)) return reject(res, 400, '不支持的 AI 服务')
       if (!readKey(user.id, body.provider)) return reject(res, 409, '请先保存该服务的 API 密钥')
-      preferences[user.id] = { provider: body.provider }; atomicJson(preferencesFile, preferences)
+      preferences[user.id] = { ...preferences[user.id], provider: body.provider }; atomicJson(preferencesFile, preferences)
       return sendJson(res, 200, { ok: true, provider: body.provider })
     }
     if (path === '/api/ai/explain' && req.method === 'POST') {
@@ -240,7 +271,8 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       const body = await readBody(req)
       const input = { text: String(body.text || '').trim().slice(0, 2000), context: String(body.context || '').trim().slice(0, 3500), source: String(body.source || '').slice(0, 180) }
       if (!input.text) return reject(res, 400, '请输入英文表达')
-      const fingerprint = createHash('sha256').update(JSON.stringify({ uid: user.id, provider, ...input })).digest('hex')
+      const settings = configFor(user.id, provider)
+      const fingerprint = createHash('sha256').update(JSON.stringify({ uid: user.id, provider, settings, ...input })).digest('hex')
       const cached = explanationCache.get(fingerprint)
       if (cached && cached.until > Date.now()) return sendJson(res, 200, { ok: true, explanation: cached.value, cached: true })
       const limit = explanationLimits.get(user.id)
@@ -250,7 +282,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       const close = () => { if (!res.writableEnded) controller.abort() }
       res.on('close', close)
       try {
-        const value = await explainExpression({ apiKey, provider, body: input, signal: controller.signal })
+        const value = await explainExpression({ apiKey, provider, settings, body: input, signal: controller.signal })
         if (explanationCache.size >= 200) explanationCache.delete(explanationCache.keys().next().value)
         explanationCache.set(fingerprint, { until: Date.now() + 86400000, value })
         if (!res.destroyed) sendJson(res, 200, { ok: true, explanation: value })
@@ -264,7 +296,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       if (recentChat.get(user.id)) return reject(res, 429, '当前回答尚未完成')
       const body = await readBody(req)
       recentChat.set(user.id, true)
-      try { await streamConversation(req, res, { apiKey, body, provider }) } finally { recentChat.delete(user.id) }
+      try { await streamConversation(req, res, { apiKey, body, provider, settings: configFor(user.id, provider) }) } finally { recentChat.delete(user.id) }
       return true
     }
     if (path === '/api/media' && req.method === 'GET') {
