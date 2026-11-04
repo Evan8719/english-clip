@@ -1,5 +1,7 @@
 import { authorizedApiFetch } from './sync'
 import type { BookChapter } from './books'
+export interface TimedWord { start: number; end: number; text: string }
+export interface TimedSegment { start: number; end: number; text: string; translation?: string; words?: TimedWord[] }
 
 export interface Exercise {
   id: string
@@ -12,18 +14,20 @@ export interface Exercise {
 export interface MediaItem {
   id: string
   title: string
-  kind: 'audio' | 'video' | 'text' | 'book'
+  kind: 'audio' | 'video' | 'text' | 'book' | 'link' | 'lesson'
   level?: string
   levelBasis?: string
   contentHash?: string
   author?: string
   chapters?: BookChapter[]
   readingPosition?: { chapter: number; paragraph: number }
-  segments?: Array<{ start: number; end: number; text: string }>
+  segments?: TimedSegment[]
   playbackPosition?: number
   courseId?: string
   episode?: number
   sourceUrl?: string
+  lessonPage?: string
+  translationSource?: string
   notes?: Array<{ id: string; text: string; at: number; quote: string; createdAt: string }>
   studyGuide?: { summary: string; goals: string[]; points: Array<{ title: string; explanation: string; example: string; start?: number; segmentIndex?: number }>; questions: Array<{ question: string; answer: string }> }
   guideStatus?: 'processing' | 'ready' | 'failed' | ''
@@ -61,7 +65,7 @@ export async function patchMedia(id: string, changes: object): Promise<MediaItem
   return (await request<{ item: MediaItem }>(`/api/media/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) })).item
 }
 
-export async function uploadMedia(input: { title: string; source: string; transcript: string; kind: MediaItem['kind']; file?: File; level?: string; levelBasis?: string; contentHash?: string; chapters?: BookChapter[]; author?: string; segments?: MediaItem['segments'] }): Promise<MediaItem> {
+export async function uploadMedia(input: { title: string; source: string; transcript: string; kind: MediaItem['kind']; file?: File; level?: string; levelBasis?: string; contentHash?: string; sourceUrl?: string; chapters?: BookChapter[]; author?: string; segments?: MediaItem['segments'] }): Promise<MediaItem> {
   const { file, ...metadata } = input
   const created = await request<{ item: MediaItem; duplicate?: boolean }>('/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(metadata) })
   if (created.duplicate && (created.item.extension || !file)) return created.item
@@ -82,8 +86,8 @@ export async function uploadMedia(input: { title: string; source: string; transc
   return item
 }
 
-export async function processMedia(id: string): Promise<MediaItem> {
-  const data = await request<{ item: MediaItem }>(`/api/media/${id}/process`, { method: 'POST' })
+export async function processMedia(id: string, transcribe = false): Promise<MediaItem> {
+  const data = await request<{ item: MediaItem }>(`/api/media/${id}/process`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transcribe }) })
   return data.item
 }
 

@@ -11,6 +11,10 @@ const run = promisify(execFile)
 const MAX_UPLOAD = 1024 * 1024 * 1024
 const EXTENSIONS = { mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', webm: 'audio/webm', mp4: 'video/mp4', mov: 'video/quicktime', ogg: 'audio/ogg', epub: 'application/epub+zip' }
 
+function timedSegments(values) {
+  return Array.isArray(values) ? values.slice(0, 10000).filter(s => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start >= 0 && s.end > s.start && String(s.text || '').trim()).map(s => ({ start: s.start, end: s.end, text: String(s.text).slice(0, 2000), ...(typeof s.translation === 'string' ? { translation: s.translation.slice(0, 2000) } : {}), ...(Array.isArray(s.words) ? { words: s.words.slice(0, 1000).filter(w => Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start && w.end > s.start && w.start < s.end && String(w.text || w.word || '').trim()).map(w => ({ start: Math.max(s.start, w.start), end: Math.min(s.end, w.end), text: String(w.text || w.word).trim().slice(0, 100) })) } : {}) })).sort((a, b) => a.start - b.start) : []
+}
+
 function atomicJson(file, value) {
   const tmp = `${file}.tmp`
   writeFileSync(tmp, JSON.stringify(value), { mode: 0o600 })
@@ -90,26 +94,31 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       await run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', fileFor(item), '-vn', '-ac', '1', '-ar', '16000', '-b:a', '32k', '-f', 'segment', '-segment_time', '600', join(folder, 'part-%03d.mp3')], { timeout: 600000 })
       const parts = readdirSync(folder).filter((name) => /^part-\d+\.mp3$/.test(name)).sort()
       if (!parts.length || parts.length > 36) throw new Error('无法处理这段音频；请确认文件可播放且不超过 6 小时')
-      const texts = []
-      for (const part of parts) {
+      const texts = [], segments = []
+      for (const [partIndex, part] of parts.entries()) {
         const bytes = readFileSync(join(folder, part))
         if (bytes.length > 25 * 1024 * 1024) throw new Error('转写分段超过服务限制')
         const form = new FormData()
-        form.set('model', 'gpt-transcribe')
+        form.set('model', 'whisper-1')
+        form.set('response_format', 'verbose_json')
+        form.append('timestamp_granularities[]', 'segment')
+        form.append('timestamp_granularities[]', 'word')
         form.set('file', new Blob([bytes], { type: 'audio/mpeg' }), part)
         const response = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(180000) })
         if (!response.ok) throw new Error(`转写服务返回 ${response.status}；请检查 API 密钥与余额`)
         const payload = await response.json()
         if (typeof payload.text !== 'string') throw new Error('转写服务没有返回原文')
         texts.push(payload.text.trim())
+        if (!Array.isArray(payload.segments) || !payload.segments.length) throw Error('转写服务未返回时间轴')
+        segments.push(...timedSegments(payload.segments.map(s => ({ ...s, words: (payload.words || []).filter(w => w.start >= s.start && w.start < s.end) }))).map(s => ({ ...s, start: s.start + partIndex * 600, end: s.end + partIndex * 600, words: s.words?.map(w => ({ ...w, start: w.start + partIndex * 600, end: w.end + partIndex * 600 })) })))
       }
-      return texts.join('\n\n')
+      return { transcript: texts.join('\n\n'), segments }
     } finally { rmSync(folder, { recursive: true, force: true }) }
   }
 
-  async function process(item, apiKey) {
+  async function process(item, apiKey, forceTranscript = false) {
     try {
-      if (!item.transcript?.trim()) item.transcript = await transcribe(item, apiKey)
+      if (forceTranscript || !item.transcript?.trim()) Object.assign(item, await transcribe(item, apiKey))
       item.exercises = makeExercises(item.transcript)
       item.status = 'ready'
       item.error = ''
@@ -231,7 +240,17 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       const kind = String(body.kind || '')
       const title = String(body.title || '').trim().slice(0, 160)
       const transcript = String(body.transcript || '').trim().slice(0, 200000)
-      if (!title || !['audio', 'video', 'text', 'book'].includes(kind)) return reject(res, 400, '标题或素材类型无效')
+      if (!title || !['audio', 'video', 'text', 'book', 'link', 'lesson'].includes(kind)) return reject(res, 400, '标题或素材类型无效')
+      let sourceUrl = ''
+      if (kind === 'link' || kind === 'lesson') {
+        try {
+          const parsed = new URL(String(body.sourceUrl || ''))
+          if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.href.length > 2048) throw Error('Invalid link')
+          sourceUrl = parsed.href
+        } catch { return reject(res, 400, '请输入有效的 http / https 链接') }
+        const existing = Object.values(bucket(user.id)).find(item => item.kind === kind && item.sourceUrl === sourceUrl)
+        if (existing) return sendJson(res, 200, { ok: true, item: publicItem(existing), duplicate: true })
+      }
       const contentHash = /^[a-f0-9]{64}$/.test(body.contentHash || '') ? body.contentHash : ''
       const duplicate = contentHash && Object.values(bucket(user.id)).find((item) => item.contentHash === contentHash)
       if (duplicate) return sendJson(res, 200, { ok: true, item: publicItem(duplicate), duplicate: true })
@@ -239,7 +258,8 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       const now = new Date().toISOString()
       const item = { id: randomUUID(), ownerId: user.id, title, kind, source: String(body.source || '').trim().slice(0, 160), transcript, exercises: transcript ? makeExercises(transcript) : [], status: kind === 'text' ? 'ready' : 'awaiting-file', bytes: 0, extension: '', createdAt: now, updatedAt: now, error: '' }
       Object.assign(item, { contentHash, level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : '', levelBasis: String(body.levelBasis || '待评估').slice(0, 50), chapters, author: String(body.author || '').slice(0, 200) })
-      item.segments = Array.isArray(body.segments) ? body.segments.slice(0, 10000).filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start >= 0 && s.end > s.start).map((s) => ({ start: s.start, end: s.end, text: String(s.text || '').slice(0, 2000) })) : []
+      if (kind === 'link' || kind === 'lesson') { item.sourceUrl = sourceUrl; item.status = 'ready' }
+      item.segments = timedSegments(body.segments)
       if (kind === 'book' && chapters.length) item.status = 'ready'
       bucket(user.id)[item.id] = item
       save()
@@ -253,6 +273,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
     if (!item) return reject(res, 404, '素材不存在')
     if (action === 'file' && (req.method === 'GET' || req.method === 'HEAD')) return serveFile(req, res, item, url)
     if (!user) return reject(res, 401, '未登录')
+    if ((item.kind === 'link' && action && action !== 'guide') || (item.kind === 'lesson' && ['local', 'process'].includes(action))) return reject(res, 400, '收集链接不需要上传或转写')
     if (action === 'guide' && req.method === 'POST') {
       if (!readKey(user.id, 'deepseek')) return reject(res, 409, '请先在设置中配置 DeepSeek')
       if (!item.transcript || item.kind === 'book') return reject(res, 400, '请先为音视频生成原文')
@@ -268,7 +289,7 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       } else if (typeof body.transcript === 'string') {
         if (item.status !== 'transcribing-local') return reject(res, 409, '任务状态已变化')
         item.transcript = body.transcript.trim().slice(0, 200000)
-        item.segments = Array.isArray(body.segments) ? body.segments.slice(0, 10000).filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start >= 0 && s.end >= s.start).map((s) => ({ start: s.start, end: s.end, text: String(s.text || '').slice(0, 2000) })) : []
+        item.segments = timedSegments(body.segments)
         item.exercises = makeExercises(item.transcript); item.status = 'ready'; item.error = ''
       } else if (body.error) { item.status = 'failed'; item.error = String(body.error).slice(0, 300) }
       else { if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '任务正在处理'); item.status = 'queued-local'; item.error = '' }
@@ -286,10 +307,12 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
       if (item.kind === 'book') return reject(res, 400, '电子书请选取段落阅读或练习')
       if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '正在处理')
       if (item.kind !== 'text' && !item.extension) return reject(res, 400, '请先上传文件')
+      const body = await readBody(req)
       const key = readKey(user.id)
+      if (body.transcribe && !key) return reject(res, 409, '云端时间字幕需要在设置中配置转写密钥；手机也可提交电脑队列')
       if (!item.transcript.trim() && !key) return reject(res, 409, '请先在设置中填写转写 API 密钥，或手动添加原文')
       item.status = 'processing'; item.error = ''; save()
-      void process(item, key)
+      void process(item, key, body.transcribe === true)
       return sendJson(res, 202, { ok: true, item: publicItem(item) })
     }
     if (!action && req.method === 'GET') return sendJson(res, 200, { ok: true, item: publicItem(item) })
@@ -307,6 +330,10 @@ export function createMediaApi({ dataDir, secret, sendJson }) {
         item.status = item.kind === 'book' || item.transcript ? 'ready' : (item.extension ? 'uploaded' : 'awaiting-file')
         item.segments = []
         delete item.studyGuide; item.guideStatus = ''; item.guideError = ''
+      }
+      if (['link', 'lesson'].includes(item.kind) && Array.isArray(body.segments)) {
+        item.segments = timedSegments(body.segments)
+        item.status = 'ready'
       }
       item.updatedAt = new Date().toISOString(); save()
       if (typeof body.transcript === 'string') void prepareGuide(item)

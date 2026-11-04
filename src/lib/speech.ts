@@ -91,6 +91,7 @@ export async function speakEnglish(
   const value = text.trim()
   if (!value) return
 
+  if (!preferredAudioUrl && 'speechSynthesis' in window) { speakWithTts(value); return }
   const url = preferredAudioUrl || (await fetchDictionaryAudio(value))
   if (url) {
     const ok = await playAudioUrl(url)

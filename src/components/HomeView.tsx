@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Entry, EntryKind } from '../types'
 import { categoriesForFilter, listSources, normalizeCategory } from '../lib/categories'
 import { EntryCard } from './EntryCard'
+import { NavIcon } from './NavIcon'
 
 interface Props {
   onOpenOrigin?: (origin: NonNullable<Entry['enrichment']>['origin']) => void
@@ -47,9 +48,9 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
 
   return (
     <div className="redesign-page redesign-home">
-      <header className="redesign-heading home-heading">
+      <header className="redesign-heading home-heading"><img className="home-brand-art" src={`${import.meta.env.BASE_URL}clip-wordcard.webp`} alt="英文词卡与回形针" width="160" height="107" />
         <div><div className="redesign-subtabs"><button className="active">词句</button><button onClick={onMaterials}>素材</button><button onClick={onDictionary}>词典</button></div><h1>我的本子</h1><p>把遇见的表达，慢慢变成自己的。</p></div>
-        <button type="button" className="redesign-primary home-record" onClick={onCapture}><span>＋</span> 记录新表达</button>
+        <button type="button" className="redesign-primary home-record" onClick={onCapture}><NavIcon name="plus" />记录新表达</button>
       </header>
 
       <div className="home-controls">

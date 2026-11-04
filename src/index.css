@@ -1135,3 +1135,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .media-player-dock .media-audio { display: block; margin: 0; width: 100%; }
 .media-reader .material-study, .media-reader .media-transcript { scroll-margin-top: calc(var(--media-player-height, 0px) + 14px); }
 @media (max-width: 760px) { .media-reader-head { margin-block: 16px; } .media-reader-head h2 { font-size: 1.3rem; margin: 10px 0; } .media-reader-head p { margin: 6px 0; font-size: .85rem; } }
+
+.modal-backdrop { z-index: 100; top: var(--capture-top, 0px); bottom: auto; height: var(--capture-height, 100dvh); overflow: hidden; }
+.modal { max-height: min(calc(var(--capture-height, 100dvh) - 24px), 860px); min-height: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.modal > .primary.wide { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -8px 16px #fffdf8; }
+.voice-input { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block: 8px; }
+.practice-history { margin: 20px; padding: 16px; border-top: 1px solid var(--line); }
+.practice-history button { margin: 6px; padding: 10px; }

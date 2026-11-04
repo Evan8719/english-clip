@@ -1,11 +1,11 @@
 import { NavIcon } from './components/NavIcon'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Entry, Familiarity, TabId } from './types'
 import { createEntry, listEntries, reviewEntry, softDeleteEntry, updateEntry } from './db/entries'
 import { ensureLexiconLoaded } from './lib/lexicon'
 import { listCategories, migrateLegacyEntryCategories } from './lib/categories'
 import { warmSpeechVoices } from './lib/speech'
-import { getCurrentUser, isSyncConfigured, scheduleSilentSync, syncNow } from './lib/sync'
+import { getCurrentUser, getStoredUserId, isSyncConfigured, scheduleSilentSync, syncNow } from './lib/sync'
 import { CaptureModal } from './components/CaptureModal'
 import { HomeView } from './components/HomeView'
 import { ReviewView } from './components/ReviewView'
@@ -18,9 +18,15 @@ import { LearningMethodsView } from './components/LearningMethodsView'
 interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number; courseId?: string; episode?: number; timestamp?: number } }
 
 export default function App() {
+  const workspace = useRef<HTMLElement>(null)
+  const scrollPositions = useRef<Partial<Record<TabId, number>>>({})
+  const [practiceVisited, setPracticeVisited] = useState(false)
+  const [materialsVisited, setMaterialsVisited] = useState(false)
   const [materialSession, setMaterialSession] = useState(0)
   const [materialOrigin, setMaterialOrigin] = useState<CaptureSeed['origin']>(undefined)
-  const [tab, setTab] = useState<TabId>('home')
+  const [tab, setTabState] = useState<TabId>('home')
+  useLayoutEffect(() => { if (workspace.current) workspace.current.scrollTop = scrollPositions.current[tab] || 0; if (tab === 'materials') setMaterialsVisited(true); if (tab === 'practice') setPracticeVisited(true) }, [tab])
+  function setTab(next: TabId) { if (next !== tab && workspace.current) scrollPositions.current[tab] = workspace.current.scrollTop; setTabState(next) }
   const [entries, setEntries] = useState<Entry[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [captureOpen, setCaptureOpen] = useState(false)
@@ -80,8 +86,8 @@ export default function App() {
   return (
     <div className="redesign-shell">
       <header className="redesign-mobile-header"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><strong>English Clip</strong></div><div className="redesign-mobile-tools"><button type="button" className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}>方法</button><button type="button" onClick={() => setTab('settings')} aria-label="设置">设置</button></div></header>
-      <div className="redesign-layout"><aside className="redesign-rail"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><span><strong>English Clip</strong><small>英语剪贴本</small></span></div><button className="redesign-primary rail-capture" onClick={() => openCreate()}>＋ 记录新表达</button><nav aria-label="桌面主导航"><button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>▤　我的本子</button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>◇　复习</button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}>◉　开口练</button><button className={tab === 'materials' ? 'active' : ''} onClick={() => { setMaterialOrigin(undefined); setMaterialSession((n) => n + 1); setTab('materials') }}>♫　素材库</button><button className={tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('dictionary')}>Aa　词典</button><button className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}>✧　学习方法</button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>⚙　设置</button></nav><p className="rail-foot">本地记录 · NAS 同步<br />记下来，想起时再翻。</p></aside>
-      <main className="redesign-workspace">
+      <div className="redesign-layout"><aside className="redesign-rail"><div className="redesign-logo"><img src={`${import.meta.env.BASE_URL}pwa-192.png`} alt="" /><span><strong>English Clip</strong><small>英语剪贴本</small></span></div><button className="redesign-primary rail-capture" onClick={() => openCreate()}><NavIcon name="plus" />记录新表达</button><nav aria-label="桌面主导航"><button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}><NavIcon name="book" /><span>我的本子</span></button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}><NavIcon name="review" /><span>复习</span></button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}><NavIcon name="chat" /><span>开口练</span></button><button className={tab === 'materials' ? 'active' : ''} onClick={() => { setTab('materials') }}><NavIcon name="audio" /><span>素材库</span></button><button className={tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('dictionary')}><NavIcon name="dictionary" /><span>词典</span></button><button className={tab === 'methods' ? 'active' : ''} onClick={() => setTab('methods')}><NavIcon name="methods" /><span>学习方法</span></button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}><NavIcon name="settings" /><span>设置</span></button></nav><p className="rail-foot">本地记录 · NAS 同步<br />记下来，想起时再翻。</p></aside>
+      <main ref={workspace} className="redesign-workspace">{materialsVisited && tab !== 'materials' && tab !== 'practice' && <button className="redesign-text-button resume-material-button" onClick={() => setTab('materials')}>← 继续刚才的素材</button>}
         {tab === 'home' && (
           <HomeView
             entries={entries}
@@ -91,9 +97,9 @@ export default function App() {
             onDelete={handleDelete}
             lexiconStatus={lexiconReady ? '' : lexiconError ? '本地词库暂未加载' : '词库加载中…'}
             onCapture={() => openCreate()}
-            onMaterials={() => { setMaterialOrigin(undefined); setMaterialSession((n) => n + 1); setTab('materials') }}
+            onMaterials={() => { setTab('materials') }}
             onDictionary={() => setTab('dictionary')}
-            onOpenOrigin={(origin) => { setMaterialOrigin(origin); setTab('materials') }}
+            onOpenOrigin={(origin) => { setMaterialSession((n) => n + 1); setMaterialOrigin(origin); setTab('materials') }}
           />
         )}
         {tab === 'review' && (
@@ -105,14 +111,14 @@ export default function App() {
             onHome={() => setTab('home')}
           />
         )}
-        {tab === 'materials' && <MaterialsView key={`${materialSession}:${materialOrigin?.materialId || 'library'}`} initialOrigin={materialOrigin} onCapture={openCreate} onPractice={(text, title) => { setPracticeSeed({ text, title }); setTab('practice') }} onSettings={() => setTab('settings')} />}
+        {(tab === 'materials' || materialsVisited) && <div hidden={tab !== 'materials'}><MaterialsView active={tab === 'materials'} key={`${getStoredUserId() || 'local'}:${materialSession}:${materialOrigin?.materialId || 'library'}`} initialOrigin={materialOrigin} onCapture={openCreate} onPractice={(text, title) => { setPracticeSeed({ text, title }); setTab('practice') }} onSettings={() => setTab('settings')} /></div>}
         {tab === 'dictionary' && <DictionaryView onCapture={openCreate} />}
-        {tab === 'practice' && <PracticeView entries={entries} seed={practiceSeed} onCapture={openCreate} />}
+        {(tab === 'practice' || practiceVisited) && <div hidden={tab !== 'practice'}><PracticeView key={getStoredUserId() || 'local'} active={tab === 'practice'} onReturn={practiceSeed ? () => setTab('materials') : undefined} entries={entries} seed={practiceSeed} onCapture={openCreate} /></div>}
         {tab === 'methods' && <LearningMethodsView onNavigate={setTab} onCapture={() => openCreate()} />}
         {tab === 'settings' && <SettingsView />}
       </main>
       </div>
-      <nav className="redesign-mobile-nav" aria-label="手机主导航"><button className={tab === 'home' || tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('home')}><NavIcon name="book" /><span>本子</span></button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}><NavIcon name="review" /><span>复习</span></button><button className="redesign-nav-plus" aria-label="记录新词句" onClick={() => openCreate()}><NavIcon name="plus" /></button><button className={tab === 'materials' ? 'active' : ''} onClick={() => { setMaterialOrigin(undefined); setMaterialSession((n) => n + 1); setTab('materials') }}><NavIcon name="audio" /><span>素材</span></button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}><NavIcon name="chat" /><span>开口练</span></button></nav>
+      <nav className="redesign-mobile-nav" aria-label="手机主导航"><button className={tab === 'home' || tab === 'dictionary' ? 'active' : ''} onClick={() => setTab('home')}><NavIcon name="book" /><span>本子</span></button><button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}><NavIcon name="review" /><span>复习</span></button><button className="redesign-nav-plus" aria-label="记录新词句" onClick={() => openCreate()}><NavIcon name="plus" /></button><button className={tab === 'materials' ? 'active' : ''} onClick={() => { setTab('materials') }}><NavIcon name="audio" /><span>素材</span></button><button className={tab === 'practice' ? 'active' : ''} onClick={() => { setPracticeSeed(null); setTab('practice') }}><NavIcon name="chat" /><span>开口练</span></button></nav>
 
       <CaptureModal
         open={captureOpen}

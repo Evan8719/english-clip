@@ -12,6 +12,7 @@ import {
   normalizeCategory,
   setLastCategory,
 } from '../lib/categories'
+import { VoiceInput } from './VoiceInput'
 import { speakEnglish } from '../lib/speech'
 
 export interface EntryFormInput {
@@ -51,6 +52,13 @@ export function CaptureModal({
   onClose,
   onSave,
 }: Props) {
+  useEffect(() => {
+    if (!open) return
+    const view = window.visualViewport
+    const resize = () => { document.documentElement.style.setProperty('--capture-height', `${view?.height || window.innerHeight}px`); document.documentElement.style.setProperty('--capture-top', `${view?.offsetTop || 0}px`) }
+    resize(); view?.addEventListener('resize', resize); view?.addEventListener('scroll', resize)
+    return () => { view?.removeEventListener('resize', resize); view?.removeEventListener('scroll', resize) }
+  }, [open])
   const editing = Boolean(entry)
   const [text, setText] = useState(initialText)
   const [context, setContext] = useState('')
@@ -61,6 +69,7 @@ export function CaptureModal({
   const [kind, setKind] = useState<EntryKind>('word')
   const [enrichment, setEnrichment] = useState<Enrichment | undefined>()
   const [enriching, setEnriching] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
   const [categories, setCategories] = useState<string[]>([])
   const [category, setCategory] = useState('其他')
@@ -147,7 +156,7 @@ export function CaptureModal({
         enrichment,
       })
       onClose()
-    } finally {
+    } catch (error) { setSaveError((error as Error).message || '保存失败，请重试') } finally {
       setSaving(false)
     }
   }
@@ -168,6 +177,7 @@ export function CaptureModal({
           </button>
         </header>
 
+        <VoiceInput onText={(value) => setText((old) => old ? old + ' ' + value : value)} />
         <label className="field">
           <span>词 / 短语 / 句子</span>
           <div className="row">
@@ -372,6 +382,7 @@ export function CaptureModal({
           )}
         </section>
 
+        {saveError && <p role="alert">{saveError}</p>}
         <button
           type="button"
           className="primary wide"

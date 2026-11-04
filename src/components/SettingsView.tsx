@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { NavIcon } from './NavIcon'
 import type { SyncUser as User } from '../lib/sync'
 import { aiKeyConfigured, deepseekConfigured, deleteAiKey, saveAiKey } from '../lib/media'
 import { exportEntriesJson, exportEntriesMarkdown } from '../lib/export'
@@ -50,6 +51,7 @@ export function SettingsView() {
     <div className="page">
       <header className="page-header">
         <h1>设置</h1>
+        <div className="settings-help-links"><a href={`${import.meta.env.BASE_URL}guide.html`} target="_blank" rel="noreferrer"><NavIcon name="book" />使用说明</a><a href={`${import.meta.env.BASE_URL}candidates.html`} target="_blank" rel="noreferrer"><NavIcon name="bookmark" />精选待选清单</a></div>
         <p className="lede">手机记、电脑看——同一邮箱登录即可互通。</p>
       </header>
 

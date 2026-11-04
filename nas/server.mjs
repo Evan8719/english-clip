@@ -9,6 +9,7 @@
  * 密钥：<root>/data/secret.key（0600，Token 签名用）
  */
 import { createServer } from 'node:http'
+import { gzipSync } from 'node:zlib'
 import {
   createHmac,
   randomBytes,
@@ -178,11 +179,15 @@ function applyCors(req, res) {
 }
 
 function sendJson(res, status, payload) {
-  const body = JSON.stringify(payload)
+  const raw = Buffer.from(JSON.stringify(payload))
+  const compressed = raw.length > 4096 && /\bgzip\b/.test(res.req?.headers['accept-encoding'] || '')
+  const body = compressed ? gzipSync(raw) : raw
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
-    'Content-Length': Buffer.byteLength(body),
+    'Content-Length': body.length,
+    Vary: 'Accept-Encoding',
+    ...(compressed ? { 'Content-Encoding': 'gzip' } : {}),
   })
   res.end(body)
 }

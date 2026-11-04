@@ -18,14 +18,29 @@ try {
   const owner = await api('/api/auth/register', '', 'POST', { email: 'owner@example.test', password: 'test-only-password' })
   const token = owner.data.token
   assert.ok(token)
-  const book = { title: 'Test book', kind: 'book', contentHash: 'a'.repeat(64), level: 'B1', chapters: [{ title: 'Chapter one', paragraphs: ['Take your time. Enjoy this book.'] }] }
+  const bookmark = { title: 'Collected English video', kind: 'link', sourceUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE', source: 'YouTube' }
+  const link = await api('/api/media', token, 'POST', bookmark)
+  assert.equal(link.status, 201); assert.equal(link.data.item.status, 'ready'); assert.equal(link.data.item.streamUrl, null)
+  assert.equal((await api('/api/media', token, 'POST', bookmark)).data.item.id, link.data.item.id)
+  for (const sourceUrl of ['javascript:alert(1)', 'data:text/html,test', 'https://name:password@example.test']) assert.equal((await api('/api/media', token, 'POST', { ...bookmark, sourceUrl })).status, 400)
+  const linkSegments = [{ start: 0, end: 3, text: 'Enjoy this book.', words: [{ start: 0, end: 1, text: 'Enjoy' }, { start: 1, end: 2, text: 'this' }, { start: 2, end: 3, text: 'book.' }] }]
+  const lesson = await api('/api/media', token, 'POST', { ...bookmark, kind: 'lesson', transcript: 'Enjoy this book.', segments: linkSegments })
+  assert.equal(lesson.status, 201); assert.notEqual(lesson.data.item.id, link.data.item.id); assert.deepEqual(lesson.data.item.segments, linkSegments)
+  assert.equal((await api(`/api/media/${lesson.data.item.id}/local`, token, 'POST', {})).status, 400)
+  const patchedLink = await api(`/api/media/${link.data.item.id}`, token, 'PATCH', { transcript: 'Enjoy this book.', segments: linkSegments, notes: [{ text: 'Saved link note', at: 1 }] })
+  assert.deepEqual(patchedLink.data.item.segments, linkSegments); assert.equal(patchedLink.data.item.notes[0].at, 1)
+  assert.equal((await api(`/api/media/${link.data.item.id}/local`, token, 'POST', {})).status, 400)
+  const book = { title: 'Test book', kind: 'book', contentHash: 'a'.repeat(64), level: 'B1', chapters: [{ title: 'Chapter one', paragraphs: ['Take your time. Enjoy this book. '.repeat(500)] }] }
   const created = await api('/api/media', token, 'POST', book)
   assert.equal(created.status, 201)
   const id = created.data.item.id
   assert.equal((await api('/api/media', token, 'POST', book)).data.duplicate, true)
   const listing = await api('/api/media', token)
-  assert.equal(listing.data.items[0].chapters, undefined)
+  assert.equal(listing.data.items.find(item => item.id === id).chapters, undefined)
   assert.equal((await api(`/api/media/${id}`, token)).data.item.chapters.length, 1)
+  const zipped = await fetch(`http://127.0.0.1:${port}/api/media/${id}`, { headers: { Authorization: `Bearer ${token}`, 'Accept-Encoding': 'gzip' } })
+  assert.equal(zipped.headers.get('content-encoding'), 'gzip')
+  assert.equal((await zipped.json()).item.chapters.length, 1)
   assert.equal((await api(`/api/media/${id}`, token, 'PATCH', { readingPosition: { chapter: 0, paragraph: 1 }, level: 'B2' })).data.item.readingPosition.paragraph, 1)
   assert.equal((await api(`/api/media/${id}/process`, token, 'POST', {})).status, 400)
   await api('/api/ai/key', token, 'POST', { apiKey: 'sk-test-deepseek-not-real', provider: 'deepseek' })
@@ -67,5 +82,5 @@ try {
   await streamConversation(null, res, { apiKey: 'test', body: { message: 'Hello' }, fetcher })
   assert.equal(beforeEnd, true); assert.equal(requestBody.model, 'deepseek-flash'); assert.equal(requestBody.thinking.type, 'disabled')
   assert.ok(chunks.at(-1).includes('"done":true'))
-  console.log(JSON.stringify({ ok: true, checks: ['book chapters and progress', 'content deduplication', 'private account isolation', 'encrypted separate DeepSeek key', 'local queue claim and completion', 'timestamp segments', 'incremental AI stream before completion'] }))
+  console.log(JSON.stringify({ ok: true, checks: ['collected links and prepared lessons separated', 'URL validation and deduplication', 'word timestamps survive roundtrip', 'book chapters and progress', 'content deduplication', 'private account isolation', 'encrypted separate DeepSeek key', 'local queue claim and completion', 'timestamp segments', 'incremental AI stream before completion'] }))
 } finally { child.kill(); await pause(100) }

@@ -27,7 +27,7 @@ let imported = 0, skipped = 0
 // Validate the whole batch before changing the index.
 for (const item of manifest.items) {
   const file = resolve(root, item.file)
-  if (!file.startsWith(root + sep) || !realpathSync(file).startsWith(realpathSync(root) + sep) || !['audio', 'video', 'book', 'text'].includes(item.kind)) throw Error('Invalid manifest path or kind')
+  if (!file.startsWith(root + sep) || !realpathSync(file).startsWith(realpathSync(root) + sep) || !['audio', 'video', 'book', 'text', 'lesson'].includes(item.kind)) throw Error('Invalid manifest path or kind')
   if (createHash('sha256').update(readFileSync(file)).digest('hex') !== item.contentHash) throw Error('File checksum mismatch')
 }
 for (const item of manifest.items) {

@@ -19,7 +19,8 @@
     "build:icons": "node scripts/generate-icons.mjs",
     "dist:mac": "npm run build && electron-builder --mac",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docs:guide": "node scripts/build-user-guide.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.3",

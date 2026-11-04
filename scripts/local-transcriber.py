@@ -49,9 +49,9 @@ def main():
             with wave.open(str(pcm), 'rb') as audio:
                 samples = np.frombuffer(audio.readframes(audio.getnframes()), dtype=np.int16).astype(np.float32) / 32768
         def decode():
-            parts, info = model.transcribe(samples, language='en', beam_size=3, vad_filter=True)
+            parts, info = model.transcribe(samples, language='en', beam_size=3, vad_filter=True, word_timestamps=True)
             duration = len(samples) / 16000
-            return [{'start': round(s.start, 3), 'end': round(min(s.end, duration), 3), 'text': s.text.strip()} for s in parts if s.start < duration and s.end > s.start and s.text.strip()]
+            return [{'start': round(s.start, 3), 'end': round(min(s.end, duration), 3), 'text': s.text.strip(), 'words': [{'start': round(max(s.start, w.start), 3), 'end': round(min(w.end, s.end, duration), 3), 'text': w.word.strip()} for w in (s.words or []) if w.end > w.start and w.start < duration and w.word.strip()]} for s in parts if s.start < duration and s.end > s.start and s.text.strip()]
         try: segments = decode()
         except RuntimeError:
             if device != 'cuda': raise
