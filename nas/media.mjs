@@ -1,3 +1,4 @@
+import { createMediaCovers } from './media-covers.mjs'
 import { createMaterialTaxonomy } from './material-taxonomy.mjs'
 import { createProgressStore } from './media-progress.mjs'
 import { streamConversation, explainExpression, assistantConfig, testAssistant, listAssistantModels } from './deepseek.mjs'
@@ -69,6 +70,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     catch { item.catalogError = '可读目录暂未更新，原资料仍可使用' }
   }
   const bucket = (uid) => (index[uid] ||= {})
+  const covers = createMediaCovers(root, secret, sendJson)
   const taxonomy = createMaterialTaxonomy(root, uid => Object.values(bucket(uid)))
   const dailyApi = createDailyLearningApi({ dataDir, sendJson, getEntries, getMaterials: uid => Object.values(bucket(uid)).map(item => ({ ...item, ...progressStore.read(item) })), getAssistant: uid => { const provider = providerFor(uid); return { provider, apiKey: readKey(uid, provider), settings: configFor(uid, provider) } } })
   const get = (uid, id) => bucket(uid)[id]
@@ -76,7 +78,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
   const sign = (item, exp) => createHmac('sha256', secret).update(`${item.ownerId}:${item.id}:${exp}`).digest('hex')
   const publicItem = (item) => {
     const exp = Math.floor(Date.now() / 1000) + 3600
-    return { ...item, organization: taxonomy.resolve(item), ...progressStore.read(item), streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null }
+    return { ...item, organization: taxonomy.resolve(item), ...covers.urls(item.ownerId, 'item', item.id), ...progressStore.read(item), streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null }
   }
   for (const items of Object.values(index)) for (const item of Object.values(items)) {
     if (item.status === 'processing') { item.status = 'failed'; item.error = '服务重启中断了处理，请重新生成'; save() }
@@ -215,6 +217,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
 
   async function handle(req, res, url, user, readBody) {
     const path = url.pathname
+    if (path.startsWith('/api/media-covers/')) return covers.handle(req, res, url, user, (uid, kind, id) => kind === 'item' ? Boolean(get(uid, id)) : taxonomy.collections(uid).some(c => c.id === id))
     if (path.startsWith('/api/ai/daily')) return dailyApi(req, res, url, user, readBody)
     if (path === '/api/local/jobs' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
@@ -317,7 +320,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     }
     if (path === '/api/media-taxonomy') {
       if (!user) return reject(res, 401, '未登录')
-      if (req.method === 'GET') return sendJson(res, 200, { ok: true, collections: taxonomy.collections(user.id) })
+      if (req.method === 'GET') return sendJson(res, 200, { ok: true, collections: taxonomy.collections(user.id).map(c => ({ ...c, ...covers.urls(user.id, 'collection', c.id) })) })
       if (req.method === 'POST') return sendJson(res, 200, { ok: true, collection: taxonomy.saveCollection(user.id, await readBody(req)) })
       return reject(res, 405, '方法不允许')
     }

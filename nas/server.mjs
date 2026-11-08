@@ -174,7 +174,7 @@ function applyCors(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', 'true')
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-File-Extension')
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-File-Extension,X-Cover-Thumb-Length')
   res.setHeader('Access-Control-Max-Age', '86400')
 }
 

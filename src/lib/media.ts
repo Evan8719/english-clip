@@ -12,9 +12,11 @@ export interface Exercise {
   reference: string
 }
 
-export interface MaterialCollection { id: string; library: string; category: string; title: string; purposes: string[]; aliases?: string[]; inferred?: boolean }
+export interface MaterialCollection { coverUrl?: string; coverFullUrl?: string; id: string; library: string; category: string; title: string; purposes: string[]; aliases?: string[]; inferred?: boolean }
 export interface MaterialOrganization { library: string; category: string; collectionId: string; collectionTitle: string; purposes: string[]; inheritedPurposes: boolean; topics: string[]; sequence: number; inferred?: boolean }
 export interface MediaItem {
+  coverUrl?: string
+  coverFullUrl?: string
   organization?: MaterialOrganization
   revision?: number
   lastStudiedAt?: string

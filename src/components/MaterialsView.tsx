@@ -156,16 +156,16 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   function savePlayback() { if (selected?.type === 'mine' && player.current) void saveLearning(selected.item, { playbackPosition: player.current.currentTime }).catch(() => undefined) }
   function resumePlayback() { if (selected?.type === 'mine' && player.current && selected.item.playbackPosition && selected.item.playbackPosition < player.current.duration) player.current.currentTime = selected.item.playbackPosition }
 
-  if (selected?.type === 'mine' && selected.item.kind === 'book') return <BookReader item={selected.item} onBack={() => { choose(null); void reloadMine() }} onCapture={onCapture} onPractice={onPractice} />
+  if (selected?.type === 'mine' && selected.item.kind === 'book') return <BookReader item={selected.item} onBack={() => { choose(null); void reloadMine() }} onCapture={onCapture} onPractice={onPractice} onSettings={onSettings} />
 
   if (selected?.type === 'mine' && ['link', 'lesson'].includes(selected.item.kind)) return <LinkCollection key={selected.item.id} initial={selected.item} items={mine.filter(item => item.kind === selected.item.kind && item.organization?.collectionId === selected.item.organization?.collectionId)} curated={selected.item.kind === 'lesson'} active={active} onBack={() => { choose(null); void reloadMine() }} onChange={item => setMine(list => list.map(old => old.id === item.id ? item : old))} onCapture={onCapture} onPractice={onPractice} />
 
   return <div className="redesign-page media-page">
-    {!selected && <header className="redesign-heading"><div><h1>素材库</h1><p>听一段，记一句，再试着说出来。</p></div><div className="material-header-actions"><button className="icon-action collection-entry" aria-label="收集链接" title="收集链接" onClick={() => { if (loggedIn) setCollectOpen(value => !value); else onSettings() }}><NavIcon name="link" /></button><button className="redesign-primary" onClick={() => { if (!loggedIn) { setMessage('先在设置中登录 NAS 账号，再上传私人素材。'); onSettings() } else setUploadOpen(true) }}><NavIcon name="plus" />导入</button></div></header>}
+    {!selected && <header className="redesign-heading"><div><h1>素材</h1><p>听一段，记一句，再试着说出来。</p></div><div className="material-header-actions"><button className="icon-action collection-entry" aria-label="收集链接" title="收集链接" onClick={() => { if (loggedIn) setCollectOpen(value => !value); else onSettings() }}><NavIcon name="link" /></button><button className="redesign-primary" onClick={() => { if (!loggedIn) { setMessage('先在设置中登录 NAS 账号，再上传私人素材。'); onSettings() } else setBatchOpen(true) }}><NavIcon name="plus" />导入</button></div></header>}
     {message && <p className="redesign-message" role="status">{message}</p>}
     {!selected ? <div className="media-library">
       {collectOpen && <LinkCollector onClose={() => setCollectOpen(false)} onDone={item => { setCollectOpen(false); void reloadMine(); choose({ type: 'mine', item }) }} />}
-      <button className="redesign-secondary" onClick={() => { if (loggedIn) setBatchOpen(!batchOpen); else onSettings() }}>批量导入 / 电子书</button>
+      {batchOpen && <button className="redesign-text-button" onClick={() => { setBatchOpen(false); setUploadOpen(true) }}>添加文字 / 单个文件</button>}
       {batchOpen && <MaterialImport collections={collections} onCollectionsChanged={() => void reloadMine()} onClose={() => setBatchOpen(false)} onDone={() => void reloadMine()} />}
       {loading && mine.length === 0 && <p role="status">正在读取素材列表…</p>}
       <MaterialBrowser items={mine} collections={collections} state={browse} onState={setBrowseState} onOpen={item => choose({ type: 'mine', item })} loading={loading} onRefresh={() => void reloadMine()} />

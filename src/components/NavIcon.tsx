@@ -1,4 +1,4 @@
-export type IconName = 'book' | 'review' | 'plus' | 'audio' | 'chat' | 'dictionary' | 'methods' | 'settings' | 'mic' | 'play' | 'link' | 'external' | 'note' | 'bookmark' | 'close' | 'pause' | 'next' | 'previous' | 'eye' | 'check'
+export type IconName = 'book' | 'review' | 'plus' | 'audio' | 'chat' | 'dictionary' | 'methods' | 'settings' | 'mic' | 'play' | 'link' | 'external' | 'note' | 'bookmark' | 'close' | 'pause' | 'next' | 'previous' | 'eye' | 'check' | 'search' | 'filter' | 'more'
 export function NavIcon({ name }: { name: IconName }) {
   const paths: Record<IconName, string> = {
     book: 'M4 4h11a4 4 0 0 1 4 4v12H7a3 3 0 0 1-3-3V4Zm0 12h15M8 8h6',
@@ -20,6 +20,9 @@ export function NavIcon({ name }: { name: IconName }) {
     next: 'm9 5 7 7-7 7',
     previous: 'm15 5-7 7 7 7',
     eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
+    search: 'm21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
+    filter: 'M4 7h16M4 17h16M8 4v6M16 14v6',
+    more: 'M5 11v2M12 11v2M19 11v2',
     check: 'm5 12 4 4L19 6',
   }
   return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>

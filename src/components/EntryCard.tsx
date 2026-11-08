@@ -95,7 +95,7 @@ export function EntryCard({
       >
         <div className="flip-face flip-front">
           <p className="headword">{entry.text}</p>
-          {entry.enrichment?.phonetic && (
+          {entry.kind === 'word' && entry.enrichment?.phonetic && (
             <p className="phonetic">{entry.enrichment.phonetic}</p>
           )}
           <p className="meta-line">{metaParts.join(' · ')}</p>
