@@ -17,4 +17,3 @@ assert.equal(payload.items[0].transcriptOriginal, undefined)
 assert.equal(payload.items[0].libraryPath, undefined)
 assert.ok(JSON.stringify(payload).length < 1000)
 console.log('Material list excludes original transcript and private catalog fields')
-
