@@ -1310,3 +1310,90 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media(max-width:900px) { .redesign-shell > .app-desktop-settings.icon-action { display:none; } .reader-toolbar { padding-right:18px; } }
 
 .cover-editor-preview { display:block; width:100%; height:200px; object-fit:contain; background:#eef0f4; border-radius:12px; margin:12px 0; }
+
+/* Global appearances, intentionally independent from optional reader overrides. */
+:root[data-appearance] { --accent:#3453b0; --accent-ink:#fff; --good:#527b3f; --good-bg:#e6eddc; --control:#eceff4; --surface:#fffdf6; --bg0:#f2eee7; --bg1:#f2eee7; --ink:#23272f; --muted:#5b6573; --line:#d8d8d2; --card:#fffdf6; }
+:root[data-appearance=clean] { --bg0:#eef2f7; --bg1:#eef2f7; --surface:#fff; --card:#fff; --control:#e4eaf3; --line:#d7dfe9; --ink:#1e2939; --muted:#556377; }
+:root[data-appearance=night] { color-scheme:dark; --bg0:#121820; --bg1:#121820; --surface:#232d39; --card:#232d39; --control:#303d4c; --line:#435161; --ink:#e9edf4; --muted:#b2bfd0; --accent:#a7c0ff; --accent-ink:#16213a; --good:#b4d19b; --good-bg:#30452f; }
+:root[data-appearance] body, :root[data-appearance] .redesign-shell, :root[data-appearance] .redesign-workspace { background:var(--bg0); color:var(--ink); }
+:root[data-appearance] :is(.redesign-rail,.redesign-mobile-header,.redesign-mobile-nav,.home-controls,.library-controls,.reader-theme-auto,.reader-theme-auto .reader-toolbar) { background:var(--bg0); color:var(--ink); }
+:root[data-appearance] :is(.panel,.modal,.material-sheet,.redesign-detail,.daily-task,.method-card,.media-exercise,.dictionary-detail,.reader-selection) { background:var(--surface); color:var(--ink); border-color:var(--line); }
+:root[data-appearance] .redesign-home .home-grid .flip-card, :root[data-appearance] .flip-card { background:var(--card); color:var(--ink); border:1px solid var(--line); box-shadow:0 5px 0 var(--control),0 10px 22px #18232e12; }
+:root[data-appearance] :is(input,textarea,select,.home-search,.app-material-search,.redesign-search,.app-filter-choices button,.chip,.redesign-secondary,.reader-settings>div) { background:var(--surface); color:var(--ink); border-color:var(--line); }
+:root[data-appearance] :is(.redesign-primary,.primary,.redesign-nav-plus) { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); box-shadow:none; }
+:root[data-appearance] :is(.redesign-primary,.primary):hover { filter:brightness(.94); }
+:root[data-appearance] :is(.redesign-text-button,.redesign-logo,.app-library-tabs button[aria-current=page],.app-desktop-settings,.icon-action,.entry-tag) { color:var(--accent); }
+:root[data-appearance] :is(.app-library-tabs,.app-episode-row,.continue-row,.redesign-heading,.reader-toolbar) { border-color:var(--line); }
+:root[data-appearance] :is(.app-item-copy small,.app-program-open>small,.app-library-section-heading>span,.app-program-hero p,.continue-open small,.muted,.meta-line,.phonetic) { color:var(--muted); }
+:root[data-appearance] .redesign-mobile-nav button.active { background:transparent; color:var(--accent); }
+:root[data-appearance] .app-use-tags>span, :root[data-appearance] .level-badge { background:var(--good-bg); color:var(--good); }
+:root[data-appearance] .app-continue-book { background:var(--control); color:var(--ink); }
+:root[data-appearance] .material-sheet>header { background:var(--surface); }
+:root[data-appearance=night] :is(.app-material-search,.appearance-options button,.review-mode-tabs,.game-options button,.continue-conflict,.practice-chat .user,.daily-preferences,.reader-theme-auto .reader-settings>div,.app-desktop-settings) { background:var(--surface); color:var(--ink); }
+:root[data-appearance=night] :is(.app-category-tabs button,.chip.active,.redesign-tag,.redesign-message,.practice-chat .assistant,.daily-progress,.media-player-dock,.reader-theme-auto .reader-paragraph.current) { background:var(--control); color:var(--ink); }
+:root[data-appearance=night] :is(.redesign-rail nav button,.redesign-mobile-nav button,.home-category-scroll button,.redesign-subtabs button,.ghost) { color:var(--muted); }
+:root[data-appearance=night] :is(.redesign-rail nav button.active,.redesign-mobile-nav button.active,.redesign-subtabs button.active,.chip.active) { color:var(--accent); }
+:root[data-appearance=night] .reader-theme-auto .reader-chapter-nav button, :root[data-appearance=night] .reader-theme-auto .reader-toolbar button, :root[data-appearance=night] .reader-theme-auto select { background:var(--surface); color:var(--ink); }
+:root[data-appearance=night] .modal>.primary.wide { box-shadow:none; }
+:root[data-appearance=night] .app-cover-more { background:#233144ed; color:var(--ink); }
+:root[data-appearance=night] .app-action-menu button { color:var(--ink); }
+.appearance-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.appearance-options button { display:grid; gap:10px; padding:12px; border:1px solid var(--line); border-radius:14px; color:var(--ink); background:var(--surface); cursor:pointer; }
+.appearance-options button[aria-pressed=true] { outline:2px solid var(--accent); outline-offset:2px; }
+.appearance-swatch { display:block; height:65px; border-radius:8px; border:8px solid #e4ded1; background:#fffaf1; }
+.swatch-clean { border-color:#e0e7f1; background:#fff; }.swatch-night { border-color:#121820; background:#283442; }
+.review-mode-tabs { display:flex; gap:6px; padding:5px; margin:0 0 22px; background:var(--control); border-radius:12px; }
+.review-mode-tabs button { flex:1; min-height:44px; border:0; border-radius:9px; background:transparent; color:var(--ink); cursor:pointer; }
+.review-mode-tabs button[aria-pressed=true] { background:var(--accent); color:var(--accent-ink); }
+.review-game { max-width:640px; margin:auto; }.game-intro,.game-result { text-align:center; }
+.game-progress { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.game-question { margin:18px 0; padding:24px; background:var(--surface); border-radius:18px; box-shadow:0 5px 0 var(--control); }
+.game-question h2 { font-size:18px; margin:0 0 20px; }.game-expression { font-size:25px; font-weight:750; overflow-wrap:anywhere; }
+.game-context { font-size:14px; color:var(--muted); }.game-options { display:grid; gap:12px; }
+.game-options button { text-align:left; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; color:var(--ink); cursor:pointer; overflow-wrap:anywhere; }
+.game-options button.correct { background:var(--good-bg); color:var(--good); border-color:var(--good); }
+.game-options button.incorrect { border-color:#be7a70; }.game-feedback { margin-top:18px; }.game-feedback .redesign-primary { width:100%; }
+.game-feedback strong { color:var(--good); }.game-feedback p { overflow-wrap:anywhere; }.game-skip { display:block; margin:14px auto 0; }
+.game-self-mark { display:flex; gap:12px; }.game-answer { font-size:20px; }.game-result .redesign-secondary { margin:12px; }
+
+:root[data-appearance] .flip-face { background:var(--card); color:var(--ink); }
+.book-reader.reader-theme-paper { background:#fffaf0; color:#292c32; }
+.book-reader.reader-theme-white { background:#fff; color:#202937; }
+.book-reader.reader-theme-night { background:#18202a; color:#e7ecf4; }
+.book-reader.reader-theme-night .reader-toolbar, .book-reader.reader-theme-night .reader-selection { background:#232d39; color:#e7ecf4; }
+:root[data-appearance=night] .book-reader.reader-theme-paper { --ink:#292c32; --muted:#596477; --accent:#3453b0; }
+:root[data-appearance=night] .book-reader.reader-theme-white { --ink:#202937; --muted:#596477; --accent:#3453b0; }
+
+:root[data-appearance] { --surface-page:var(--bg0); --surface-content:var(--surface); --surface-paper:var(--surface); --surface-blue:var(--control); }
+:root[data-appearance] .redesign-mobile-nav::before { background:var(--surface); border:1px solid var(--line); }
+:root[data-appearance] .redesign-mobile-header button { color:var(--muted); }
+:root[data-appearance] .redesign-mobile-nav .redesign-nav-plus { color:var(--accent-ink); background:var(--accent); }
+:root[data-appearance] .lede { color:var(--muted); }
+:root[data-appearance] .appearance-options button { color:var(--ink); }
+:root[data-appearance] .redesign-home .home-grid .headword,
+:root[data-appearance] .review-deck .headword,
+:root[data-appearance] :is(.practice-prompt,.daily-reading) { color:var(--ink); }
+:root[data-appearance] :is(.redesign-rail nav button,.redesign-mobile-nav button,.rail-foot,.redesign-rail .redesign-logo small,.flip-hint,.practice-content>label,.daily-intro p,.daily-meanings small,.daily-session-meta) { color:var(--muted); }
+:root[data-appearance] .redesign-rail nav button:hover { background:var(--control); color:var(--ink); }
+:root[data-appearance] .redesign-rail nav button.active { background:var(--control); color:var(--accent); }
+:root[data-appearance] .redesign-rail .rail-capture { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+:root[data-appearance] :is(.practice-content,.practice-history button,.daily-reflection,.daily-focus-chips span,.daily-step-tabs button,.library-grid .media-list-row) { background:var(--surface); color:var(--ink); border-color:var(--line); }
+:root[data-appearance] :is(.practice-mode-tabs,.practice-history,.practice-content>.voice-input,.daily-basis,.daily-meanings article) { background:var(--control); color:var(--ink); }
+:root[data-appearance] .practice-content>.voice-input .muted { color:var(--muted); }
+:root[data-appearance] .practice-content>.voice-input button { background:var(--accent); color:var(--accent-ink); }
+:root[data-appearance] .practice-chat .user { background:var(--accent); color:var(--accent-ink); }
+:root[data-appearance] .practice-chat .user .redesign-text-button { color:var(--accent-ink); }
+:root[data-appearance] :is(.practice-mode-tabs button.active,.app-category-tabs button.active) { background:var(--accent); color:var(--accent-ink); }
+:root[data-appearance] :is(.practice-return,.media-player-dock,.organization-editor,.continue-conflict) { background:var(--surface); color:var(--ink); }
+:root[data-appearance=night] :is(.transcript-row:hover,.transcript-row.selected,.reader-theme-auto .reader-paragraph.selected) { background:var(--control); color:var(--ink); }
+:root[data-appearance=night] .transcript-row.playing { background:var(--good-bg); color:var(--ink); }
+:root[data-appearance=night] :is(.review-deck::before,.review-deck::after) { background:var(--control); }
+:root[data-appearance=night] :is(.home-record,.course-entry,.media-symbol) { background:var(--control); color:var(--accent); border-color:var(--line); }
+:root[data-appearance=night] :is(.course-entry small,.course-entry>span:last-child,.link-translation,.curated-credit,.curated-credit a,.library-kind,.definition-provenance) { color:var(--muted); }
+:root[data-appearance] .book-reader:is(.reader-theme-paper,.reader-theme-white,.reader-theme-night) { --surface:var(--card); }
+.book-reader.reader-theme-paper { --card:#fffaf0; --control:#ede8dd; --ink:#292c32; --muted:#596477; --accent:#3453b0; }
+.book-reader.reader-theme-white { --card:#fff; --control:#edf0f4; --ink:#202937; --muted:#596477; --accent:#3453b0; }
+.book-reader.reader-theme-night { --card:#18202a; --control:#303d4c; --ink:#e7ecf4; --muted:#b2bfd0; --accent:#a7c0ff; }
+:root[data-appearance] .book-reader:is(.reader-theme-paper,.reader-theme-white,.reader-theme-night) :is(.reader-toolbar,.reader-settings>div,.reader-selection) { background:var(--card); color:var(--ink); }
+:root[data-appearance] .redesign-mobile-nav .redesign-nav-plus { color:var(--accent-ink); }
+:root[data-appearance] .redesign-heading p:not(.redesign-eyebrow) { color:var(--muted); }

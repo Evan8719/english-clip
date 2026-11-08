@@ -20,6 +20,7 @@ import { explainWithAi } from './lib/media'
 interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; chapter?: number; paragraph?: number; courseId?: string; episode?: number; timestamp?: number } }
 
 export default function App() {
+  useLayoutEffect(() => { const theme = localStorage.getItem('ec.appearance'); document.documentElement.dataset.appearance = ['paper','clean','night'].includes(theme || '') ? theme! : 'paper' }, [])
   const workspace = useRef<HTMLElement>(null)
   const scrollPositions = useRef<Partial<Record<TabId, number>>>({})
   const [dailyRequest, setDailyRequest] = useState(0)

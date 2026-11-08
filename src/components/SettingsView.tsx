@@ -1,3 +1,4 @@
+import { AppearanceSettings } from './AppearanceSettings'
 import { useEffect, useState } from 'react'
 import { NavIcon } from './NavIcon'
 import { AiSettings } from './AiSettings'
@@ -60,6 +61,7 @@ export function SettingsView() {
         </p>
       </section>
 
+      <AppearanceSettings />
       <AiSettings loggedIn={Boolean(user)} />
       <section className="panel">
         <h2>电脑本地转写</h2><p className="muted">素材内点击「本机转写」，再在电脑运行项目的本地转写助手。助手复用已安装的字幕工具模型，只向 NAS 回传文稿。电脑休眠或助手未启动时，任务会等待。</p><p className="muted tiny">启动命令见 nas/README.md 的本机转写章节。助手只需登录自己的 NAS 账号，不需要对外开放电脑端口。</p>

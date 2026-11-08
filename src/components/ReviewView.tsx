@@ -1,3 +1,4 @@
+import { ReviewGame } from './ReviewGame'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Entry, Familiarity } from '../types'
 import { getStaleEntries } from '../db/entries'
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function ReviewView({ entries, onEdit, onUpdated, onReview, onHome }: Props) {
+  const [mode, setMode] = useState<'flip' | 'game'>('flip')
   const [queue, setQueue] = useState(() => getStaleEntries(entries, entries.length).map((entry) => entry.id))
   const [index, setIndex] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -48,10 +50,11 @@ export function ReviewView({ entries, onEdit, onUpdated, onReview, onHome }: Pro
 
   return <div className="page review-page">
     <header className="page-header">
-      <h1>随手复习</h1>
-      <p className="lede">点按翻面，左右滑动切词。熟悉程度由你来选。</p>
+      <h1>复习</h1>
+      <p className="lede">{mode === 'game' ? '从自己的记录里练几题，随时继续。' : '点按翻面，左右滑动切词。熟悉程度由你来选。'}</p>
     </header>
-    {entry ? <section className="review-session">
+    <nav className="review-mode-tabs" aria-label="复习模式"><button aria-pressed={mode === 'flip'} onClick={() => setMode('flip')}>自由翻卡</button><button aria-pressed={mode === 'game'} onClick={() => setMode('game')}>闯关练习</button></nav>
+    {mode === 'game' ? <ReviewGame entries={entries} /> : entry ? <section className="review-session">
       <div className="review-progress"><span>第 {index + 1} / {queue.length} 张</span><span>{normalizeCategory(entry.category)}</span></div>
       <progress className="learning-progress" value={index} max={queue.length} aria-label="本轮复习进度" />
       <div className={`review-deck${entry.kind === 'sentence' || entry.text.length > 70 ? ' is-sentence' : ''}`} onTouchStart={(event) => {
