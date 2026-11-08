@@ -1,3 +1,4 @@
+import { createMaterialTaxonomy } from './material-taxonomy.mjs'
 import { createProgressStore } from './media-progress.mjs'
 import { streamConversation, explainExpression, assistantConfig, testAssistant, listAssistantModels } from './deepseek.mjs'
 import { connectionMode } from './ai-network.mjs'
@@ -68,13 +69,14 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     catch { item.catalogError = '可读目录暂未更新，原资料仍可使用' }
   }
   const bucket = (uid) => (index[uid] ||= {})
+  const taxonomy = createMaterialTaxonomy(root, uid => Object.values(bucket(uid)))
   const dailyApi = createDailyLearningApi({ dataDir, sendJson, getEntries, getMaterials: uid => Object.values(bucket(uid)).map(item => ({ ...item, ...progressStore.read(item) })), getAssistant: uid => { const provider = providerFor(uid); return { provider, apiKey: readKey(uid, provider), settings: configFor(uid, provider) } } })
   const get = (uid, id) => bucket(uid)[id]
   const fileFor = (item) => join(filesDir, item.ownerId, `${item.id}.${item.extension}`)
   const sign = (item, exp) => createHmac('sha256', secret).update(`${item.ownerId}:${item.id}:${exp}`).digest('hex')
   const publicItem = (item) => {
     const exp = Math.floor(Date.now() / 1000) + 3600
-    return { ...item, ...progressStore.read(item), streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null }
+    return { ...item, organization: taxonomy.resolve(item), ...progressStore.read(item), streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null }
   }
   for (const items of Object.values(index)) for (const item of Object.values(items)) {
     if (item.status === 'processing') { item.status = 'failed'; item.error = '服务重启中断了处理，请重新生成'; save() }
@@ -313,6 +315,12 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       try { await streamConversation(req, res, { apiKey, body, provider, settings: configFor(user.id, provider) }) } finally { recentChat.delete(user.id) }
       return true
     }
+    if (path === '/api/media-taxonomy') {
+      if (!user) return reject(res, 401, '未登录')
+      if (req.method === 'GET') return sendJson(res, 200, { ok: true, collections: taxonomy.collections(user.id) })
+      if (req.method === 'POST') return sendJson(res, 200, { ok: true, collection: taxonomy.saveCollection(user.id, await readBody(req)) })
+      return reject(res, 405, '方法不允许')
+    }
     if (path === '/api/media' && req.method === 'GET') {
       if (!user) return reject(res, 401, '未登录')
       return sendJson(res, 200, { ok: true, items: Object.values(bucket(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((item) => {
@@ -348,22 +356,27 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       const chapters = Array.isArray(body.chapters) ? body.chapters.slice(0, 1000).map((chapter) => ({ title: String(chapter.title || '').slice(0, 300), paragraphs: Array.isArray(chapter.paragraphs) ? chapter.paragraphs.map((p) => String(p).slice(0, 20000)).slice(0, 10000) : [] })) : []
       const now = new Date().toISOString()
       const item = { id: randomUUID(), ownerId: user.id, title, kind, source: String(body.source || '').trim().slice(0, 160), transcript, exercises: transcript ? makeExercises(transcript) : [], status: kind === 'text' ? 'ready' : 'awaiting-file', bytes: 0, extension: '', createdAt: now, updatedAt: now, error: '' }
-      Object.assign(item, { contentHash, level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : '', levelBasis: String(body.levelBasis || '待评估').slice(0, 50), chapters, author: String(body.author || '').slice(0, 200) })
+      Object.assign(item, { importPath: String(body.importPath || '').slice(0, 500), contentHash, level: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : '', levelBasis: String(body.levelBasis || '待评估').slice(0, 50), chapters, author: String(body.author || '').slice(0, 200) })
       if (kind === 'link' || kind === 'lesson') { item.sourceUrl = sourceUrl; item.status = 'ready' }
       item.segments = timedSegments(body.segments)
       if (kind === 'book' && chapters.length) item.status = 'ready'
+      if (body.organization) taxonomy.place(user.id, item, body.organization)
       bucket(user.id)[item.id] = item
       save()
       if (kind === 'text' && transcript) void prepareGuide(item)
       return sendJson(res, 201, { ok: true, item: publicItem(item) })
     }
-    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local|guide|progress))?$/.exec(path)
+    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local|guide|progress|organization))?$/.exec(path)
     if (!match) return false
     const [, id, action] = match
     const item = user ? get(user.id, id) : Object.values(index).map((items) => items[id]).find(Boolean)
     if (!item) return reject(res, 404, '素材不存在')
     if (action === 'file' && (req.method === 'GET' || req.method === 'HEAD')) return serveFile(req, res, item, url)
     if (!user) return reject(res, 401, '未登录')
+    if (action === 'organization' && req.method === 'PATCH') {
+      taxonomy.place(user.id, item, await readBody(req))
+      return sendJson(res, 200, { ok: true, item: publicItem(item) })
+    }
     if (action === 'progress' && req.method === 'PATCH') {
       const body = await readBody(req)
       if (!Number.isFinite(body.playbackPosition) && !body.readingPosition) return reject(res, 400, '请提供学习位置')

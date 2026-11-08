@@ -12,7 +12,10 @@ export interface Exercise {
   reference: string
 }
 
+export interface MaterialCollection { id: string; library: string; category: string; title: string; purposes: string[]; aliases?: string[]; inferred?: boolean }
+export interface MaterialOrganization { library: string; category: string; collectionId: string; collectionTitle: string; purposes: string[]; inheritedPurposes: boolean; topics: string[]; sequence: number; inferred?: boolean }
 export interface MediaItem {
+  organization?: MaterialOrganization
   revision?: number
   lastStudiedAt?: string
   id: string
@@ -68,7 +71,14 @@ export async function patchMedia(id: string, changes: object): Promise<MediaItem
   return (await request<{ item: MediaItem }>(`/api/media/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) })).item
 }
 
-export async function uploadMedia(input: { title: string; source: string; transcript: string; kind: MediaItem['kind']; file?: File; level?: string; levelBasis?: string; contentHash?: string; sourceUrl?: string; chapters?: BookChapter[]; author?: string; segments?: MediaItem['segments'] }): Promise<MediaItem> {
+export async function listCollections(): Promise<MaterialCollection[]> {
+  const controller = new AbortController(), timer = window.setTimeout(() => controller.abort(), 12000)
+  try { return (await request<{ collections: MaterialCollection[] }>('/api/media-taxonomy', { signal: controller.signal })).collections } finally { window.clearTimeout(timer) }
+}
+export async function saveCollection(input: Omit<MaterialCollection, 'id'> & { id?: string }) { return (await request<{ collection: MaterialCollection }>('/api/media-taxonomy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })).collection }
+export async function organizeMedia(id: string, input: { collectionId: string; purposes?: string[] | null; topics?: string[]; sequence?: number }) { return (await request<{ item: MediaItem }>(`/api/media/${id}/organization`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })).item }
+
+export async function uploadMedia(input: { title: string; source: string; transcript: string; kind: MediaItem['kind']; file?: File; level?: string; levelBasis?: string; contentHash?: string; sourceUrl?: string; chapters?: BookChapter[]; author?: string; segments?: MediaItem['segments']; importPath?: string; organization?: { collectionId: string; originPath?: string; topics?: string[]; purposes?: string[] | null; sequence?: number } }): Promise<MediaItem> {
   const { file, ...metadata } = input
   const created = await request<{ item: MediaItem; duplicate?: boolean }>('/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(metadata) })
   if (created.duplicate && (created.item.extension || !file)) return created.item

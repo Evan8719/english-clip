@@ -1,14 +1,14 @@
 import { saveLearning, mergeLearning } from '../lib/learningProgress'
-import { materialGroup } from '../lib/materialGroups'
+import { MaterialBrowser } from './MaterialBrowser'
+import { defaultMaterialBrowse, type MaterialBrowseState } from '../lib/materialBrowse'
 import { NavIcon } from './NavIcon'
 import { MaterialStudy } from './MaterialStudy'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStoredUserId } from '../lib/sync'
-import { getMedia, listMedia, patchMedia, processMedia, updateMediaTranscript, uploadMedia } from '../lib/media'
-import type { MediaItem } from '../lib/media'
+import { getMedia, listMedia, listCollections, patchMedia, processMedia, updateMediaTranscript, uploadMedia } from '../lib/media'
+import type { MediaItem, MaterialCollection } from '../lib/media'
 import { cacheMaterial, readCachedMaterial, estimateLevel, LEVELS } from '../lib/books'
 import { BookReader } from './BookReader'
-import { StoryCover } from './StoryCover'
 import { MaterialImport } from './MaterialImport'
 import { LinkCollector, LinkCollection } from './LinkCollection'
 import { TimedWords } from './TimedWords'
@@ -36,15 +36,13 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   const [lineIndex, setLineIndex] = useState(0)
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const [answerOpen, setAnswerOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [level, setLevel] = useState('')
-  const [purpose, setPurpose] = useState(''), [series, setSeries] = useState('')
+  const [collections, setCollections] = useState<MaterialCollection[]>([])
+  const [browse, setBrowse] = useState<MaterialBrowseState>(() => { try { return { ...defaultMaterialBrowse, ...JSON.parse(sessionStorage.getItem('ec.material-browse:' + getStoredUserId()) || '{}') } } catch { return defaultMaterialBrowse } })
+  function setBrowseState(value: MaterialBrowseState) { setBrowse(value); try { sessionStorage.setItem('ec.material-browse:' + getStoredUserId(), JSON.stringify(value)) } catch { /* optional session restoration */ } }
   const [loading, setLoading] = useState(false)
   const reloadTask = useRef<Promise<void> | null>(null)
-  const [materialType, setMaterialType] = useState('all')
-  const [sort, setSort] = useState(() => localStorage.getItem('ec.material-sort') || 'title')
-  const [page, setPage] = useState(1)
   const [batchOpen, setBatchOpen] = useState(false)
+  const [uploadCollection, setUploadCollection] = useState('')
   const [uploadOpen, setUploadOpen] = useState(false)
   const [collectOpen, setCollectOpen] = useState(false)
   const [title, setTitle] = useState('')
@@ -77,9 +75,12 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
         const cached = await readCachedMaterial<MediaItem[]>('index').catch(() => null)
         if (uid !== getStoredUserId()) return
         if (cached) setMine(cached)
-        const items = await listMedia()
+        const cachedGroups = await readCachedMaterial<MaterialCollection[]>('collections').catch(() => null)
+        if (cachedGroups && uid === getStoredUserId()) setCollections(cachedGroups)
+        const [items, groups] = await Promise.all([listMedia(), listCollections()])
         if (uid !== getStoredUserId()) return
-        setMine(items); setMessage('')
+        setMine(items); setCollections(groups); setMessage('')
+        await cacheMaterial('collections', groups).catch(() => undefined)
         await cacheMaterial('index', items).catch(() => undefined)
       } catch (error) {
         if (uid === getStoredUserId()) setMessage((error as Error).name === 'AbortError' ? '刷新超过 12 秒，已保留本机列表。可稍后重试。' : '素材刷新失败，已保留本机列表。请检查连接后重试。')
@@ -145,7 +146,7 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
     setBusy(true); setMessage('正在保存素材…')
     try {
       const kind: MediaItem['kind'] = file ? (file.type.startsWith('video/') || /\.(mp4|mov)$/i.test(file.name) ? 'video' : 'audio') : 'text'
-      const item = await uploadMedia({ title: title.trim(), source: source.trim(), transcript: transcript.trim(), kind, file: file || undefined, level: estimateLevel(transcript), levelBasis: '文本估算／可调整' })
+      const item = await uploadMedia({ title: title.trim(), source: source.trim(), transcript: transcript.trim(), kind, organization: uploadCollection ? { collectionId: uploadCollection } : undefined, file: file || undefined, level: estimateLevel(transcript), levelBasis: '文本估算／可调整' })
       await reloadMine(); choose({ type: 'mine', item }); setUploadOpen(false); setTitle(''); setSource(''); setTranscript(''); setFile(null)
       setMessage(item.status === 'queued-local' ? '已保存，等待电脑本机转写；请启动本地转写助手。' : item.status === 'processing' ? '正在转写并生成练习。' : item.status === 'uploaded' ? '已保存。添加原文或配置转写密钥后可生成练习。' : '已保存，练习已生成。')
     } catch (error) { setMessage((error as Error).message) } finally { setBusy(false) }
@@ -155,17 +156,9 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   function savePlayback() { if (selected?.type === 'mine' && player.current) void saveLearning(selected.item, { playbackPosition: player.current.currentTime }).catch(() => undefined) }
   function resumePlayback() { if (selected?.type === 'mine' && player.current && selected.item.playbackPosition && selected.item.playbackPosition < player.current.duration) player.current.currentTime = selected.item.playbackPosition }
 
-  const groups = mine.map(materialGroup)
-  const purposes = [...new Set(groups.map(g => g.purpose))]
-  const seriesOptions = [...new Set(groups.filter(g => !purpose || g.purpose === purpose).map(g => g.series))]
-  const filtered = mine.filter((item) => (!purpose || materialGroup(item).purpose === purpose) && (!series || materialGroup(item).series === series) && (!level || (level === 'unknown' ? !item.level : item.level === level)) && (materialType === 'all' ? !['link', 'lesson'].includes(item.kind) : (materialType === 'lesson' ? item.kind === 'lesson' : materialType === 'link' ? item.kind === 'link' : materialType === 'course' ? Boolean(item.courseId) : materialType === 'book' ? item.kind === 'book' : item.kind !== 'book' && item.kind !== 'link' && item.kind !== 'lesson' && !item.courseId)) && `${item.title} ${item.source}`.toLowerCase().includes(query.toLowerCase()))
-  filtered.sort((a, b) => materialType === 'lesson' && sort === 'title' ? (a.episode || 999) - (b.episode || 999) || a.title.localeCompare(b.title) : sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : sort === 'level' ? (a.level || 'Z').localeCompare(b.level || 'Z') || a.title.localeCompare(b.title, 'en', { numeric: true }) : a.title.localeCompare(b.title, 'en', { numeric: true }))
-  const pages = Math.max(1, Math.ceil(filtered.length / 12)), activePage = Math.min(page, pages)
-  const shown = filtered.slice((activePage - 1) * 12, activePage * 12)
-  function turnPage(next: number) { setPage(next); document.querySelector('.redesign-workspace')?.scrollTo({ top: 0, behavior: 'smooth' }) }
   if (selected?.type === 'mine' && selected.item.kind === 'book') return <BookReader item={selected.item} onBack={() => { choose(null); void reloadMine() }} onCapture={onCapture} onPractice={onPractice} />
 
-  if (selected?.type === 'mine' && ['link', 'lesson'].includes(selected.item.kind)) return <LinkCollection key={selected.item.id} initial={selected.item} items={mine.filter(item => item.kind === selected.item.kind)} curated={selected.item.kind === 'lesson'} active={active} onBack={() => { choose(null); setMaterialType(selected.item.kind === 'lesson' ? 'lesson' : 'link'); void reloadMine() }} onChange={item => setMine(list => list.map(old => old.id === item.id ? item : old))} onCapture={onCapture} onPractice={onPractice} />
+  if (selected?.type === 'mine' && ['link', 'lesson'].includes(selected.item.kind)) return <LinkCollection key={selected.item.id} initial={selected.item} items={mine.filter(item => item.kind === selected.item.kind && item.organization?.collectionId === selected.item.organization?.collectionId)} curated={selected.item.kind === 'lesson'} active={active} onBack={() => { choose(null); void reloadMine() }} onChange={item => setMine(list => list.map(old => old.id === item.id ? item : old))} onCapture={onCapture} onPractice={onPractice} />
 
   return <div className="redesign-page media-page">
     {!selected && <header className="redesign-heading"><div><h1>素材库</h1><p>听一段，记一句，再试着说出来。</p></div><div className="material-header-actions"><button className="icon-action collection-entry" aria-label="收集链接" title="收集链接" onClick={() => { if (loggedIn) setCollectOpen(value => !value); else onSettings() }}><NavIcon name="link" /></button><button className="redesign-primary" onClick={() => { if (!loggedIn) { setMessage('先在设置中登录 NAS 账号，再上传私人素材。'); onSettings() } else setUploadOpen(true) }}><NavIcon name="plus" />导入</button></div></header>}
@@ -173,22 +166,11 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
     {!selected ? <div className="media-library">
       {collectOpen && <LinkCollector onClose={() => setCollectOpen(false)} onDone={item => { setCollectOpen(false); void reloadMine(); choose({ type: 'mine', item }) }} />}
       <button className="redesign-secondary" onClick={() => { if (loggedIn) setBatchOpen(!batchOpen); else onSettings() }}>批量导入 / 电子书</button>
-      {!['link', 'lesson'].includes(materialType) && <button className="course-entry" onClick={() => { const first = mine.filter((item) => item.courseId === 'family-album').sort((a, b) => (a.episode || 0) - (b.episode || 0))[0]; if (first) choose({ type: 'mine', item: first }); else { setMaterialType('course'); setMessage(loggedIn ? '正在同步课程素材，请稍后重试。' : '登录 NAS 后即可使用课程文稿、训练和私人笔记。') } }}><span><strong>走遍美国 · Family Album USA</strong><small>26 集 · A2–B1 · 文稿与练习</small></span><span>开始学习 →</span></button>}
-      {batchOpen && <MaterialImport onClose={() => setBatchOpen(false)} onDone={() => void reloadMine()} />}
-      <div className="library-controls"><button className="redesign-text-button" disabled={loading} onClick={() => void reloadMine()}>{loading ? '刷新中…' : '刷新素材'}</button><input className="redesign-search" type="search" name="material-search" autoComplete="off" data-lpignore="true" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} placeholder="搜索素材标题或来源" aria-label="搜索素材" />
-      <label>排序 <select aria-label="素材排序" value={sort} onChange={(e) => { setSort(e.target.value); localStorage.setItem('ec.material-sort', e.target.value); setPage(1) }}><option value="title">名称 A–Z / 集数</option><option value="newest">最近添加</option><option value="level">等级</option></select></label><div className="library-type-tabs">{[['all', '全部'], ['audio', '听力'], ['book', '阅读'], ['course', '课程'], ['lesson', '精选视频'], ['link', '我的收集']].map(([value, label]) => <button key={value} className={materialType === value ? 'active' : ''} onClick={() => { setMaterialType(value); setPurpose(''); setSeries(''); setPage(1) }}>{label}</button>)}</div>
-      <div className="material-group-controls"><label>用途<select aria-label="素材用途" value={purpose} onChange={e => { setPurpose(e.target.value); setSeries(''); setPage(1) }}><option value="">全部用途</option>{purposes.map(p => <option key={p}>{p}</option>)}</select></label><label>节目 / 系列<select aria-label="节目或系列" value={series} onChange={e => { setSeries(e.target.value); setPage(1) }}><option value="">全部节目 / 系列</option>{seriesOptions.map(p => <option key={p}>{p}</option>)}</select></label>{(query || purpose || series || level) && <button className="chip" onClick={() => { setQuery(''); setPurpose(''); setSeries(''); setLevel(''); setPage(1) }}>清除筛选</button>}</div>
-      <div className="level-filters" aria-label="素材等级筛选">{['', ...LEVELS, 'unknown'].map((value) => <button key={value} className={level === value ? 'active' : ''} onClick={() => { setLevel(value); setPage(1) }}>{value === '' ? '全部等级' : value === 'unknown' ? '待评估' : value}</button>)}</div>
-      <div className="library-page-bar"><span>{filtered.length} 份 · {activePage} / {pages} 页</span><div><button aria-label="上一页素材" disabled={activePage === 1} onClick={() => turnPage(activePage - 1)}>←</button><button aria-label="下一页素材" disabled={activePage === pages} onClick={() => turnPage(activePage + 1)}>→</button></div></div></div>
+      {batchOpen && <MaterialImport collections={collections} onCollectionsChanged={() => void reloadMine()} onClose={() => setBatchOpen(false)} onDone={() => void reloadMine()} />}
       {loading && mine.length === 0 && <p role="status">正在读取素材列表…</p>}
-      <div className="library-grid">
-      {(loggedIn || mine.length > 0) ? shown.map((item) => <button type="button" className={`media-list-row${item.kind === 'book' ? ' library-book' : ''}`} key={item.id} onClick={() => choose({ type: 'mine', item })}>{item.kind === 'book' && <StoryCover title={item.title} author={item.author} />}<span className="media-symbol"><NavIcon name={item.kind === 'lesson' ? 'play' : item.kind === 'link' ? 'link' : item.kind === 'book' ? 'book' : item.kind === 'video' ? 'play' : item.kind === 'audio' ? 'audio' : 'dictionary'} /></span><span><span className="library-kind">{item.kind === 'lesson' ? '精选视频' : item.kind === 'link' ? '我的收集' : item.kind === 'book' ? '阅读' : item.kind === 'video' ? '视频' : '听力'}</span><strong>{item.title}</strong>{(item.kind !== 'link' || item.level) && <span className="level-badge">{item.level || '待评估'}{item.level ? ' · 参考' : ''}</span>}<small>{materialGroup(item).purpose} · {materialGroup(item).series} · {item.source || '私人素材'}{item.kind === 'lesson' ? ' · 双语字幕' : item.kind !== 'link' && <> · {item.status === 'ready' ? `${item.exerciseCount ?? item.exercises.length} 张练习卡` : item.status === 'queued-local' ? '等本机转写' : item.status === 'transcribing-local' ? '本机转写中' : item.status === 'processing' ? '正在生成' : '待生成'}</>}</small></span><span className="media-arrow">›</span></button>) : <p className="media-empty">登录 NAS 账号后，手机和电脑可以使用同一份私人素材。</p>}
-      </div>
-      {filtered.length === 0 && mine.length > 0 && <p className="media-empty">没有符合条件的素材，可以切换等级或清空搜索。</p>}
-      {loggedIn && !loading && mine.length === 0 && <p className="media-empty">还没有上传素材。音频、视频和文字都可以放在这里。</p>}
-      <div className="library-page-bottom"><button className="redesign-secondary" disabled={activePage === 1} onClick={() => turnPage(activePage - 1)}>上一页</button><span>{activePage} / {pages}</span><button className="redesign-secondary" disabled={activePage === pages} onClick={() => turnPage(activePage + 1)}>下一页</button></div>
+      <MaterialBrowser items={mine} collections={collections} state={browse} onState={setBrowseState} onOpen={item => choose({ type: 'mine', item })} loading={loading} onRefresh={() => void reloadMine()} />
       <details className="library-starters"><summary>内置听说素材 · ELLLO {starter.length} 段</summary><div className="library-grid">
-      {starter.filter(() => !level || level === 'A2').filter((item) => `${item.title} ${item.titleZh}`.toLowerCase().includes(query.toLowerCase())).map((item) => <button type="button" className="media-list-row" key={item.id} onClick={() => choose({ type: 'starter', item })}><span className="media-symbol"><NavIcon name="audio" /></span><span><strong>{item.titleZh}</strong><span className="level-badge">A2 · 来源参考</span><small>{item.title} · {stamp(item.durationSeconds)}</small></span><span className="media-arrow">›</span></button>)}
+      {starter.filter(() => !browse.level || browse.level === 'A2').filter((item) => `${item.title} ${item.titleZh}`.toLowerCase().includes(browse.query.toLowerCase())).map((item) => <button type="button" className="media-list-row" key={item.id} onClick={() => choose({ type: 'starter', item })}><span className="media-symbol"><NavIcon name="audio" /></span><span><strong>{item.titleZh}</strong><span className="level-badge">A2 · 来源参考</span><small>{item.title} · {stamp(item.durationSeconds)}</small></span><span className="media-arrow">›</span></button>)}
       </div><p className="muted tiny">内置素材保留原课来源，用于教育学习与非商业使用。</p></details>
       <details className="material-help"><summary>播放与转写说明</summary><p>手机可上传和发起任务；电脑转写需电脑助手在线。云端转写需设置转写密钥。已有时间字幕可点句定位。移动网络首次播放受 NAS 上行和线路影响。</p></details><p className="muted tiny">等级为文本估算或来源参考，可在素材内调整。</p>
     </div> : <div className="media-reader" style={{ '--media-player-height': `${dockHeight}px` } as React.CSSProperties}>
@@ -221,6 +203,6 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
         {exercise ? <div className="media-exercise"><span className="redesign-tag">{exercise.kind === 'listen' ? '听写填空' : exercise.kind === 'shadow' ? '跟读' : '复述'}</span><p>{exercise.prompt}</p>{answerOpen && <p className="media-answer">{exercise.answer || exercise.reference}</p>}<div><button onClick={() => setAnswerOpen(!answerOpen)}>{answerOpen ? '收起参考' : '查看参考'}</button><button onClick={() => { setExerciseIndex((exerciseIndex + 1) % exercises.length); setAnswerOpen(false) }}>下一张 →</button></div></div> : <p className="media-empty">添加原文后会自动生成练习卡。</p>}
       </aside></div>
     </div>}
-    {uploadOpen && <div className="redesign-overlay" onClick={() => setUploadOpen(false)}><div className="redesign-sheet" role="dialog" aria-modal="true" aria-label="导入素材" onClick={(event) => event.stopPropagation()}><div className="redesign-sheet-head"><h2>导入练习素材</h2><button onClick={() => setUploadOpen(false)} aria-label="关闭">✕</button></div><label>标题<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：周末出行对话" /></label><label>音频或视频（可选）<input type="file" accept="audio/*,video/mp4,video/quicktime,.mp3,.m4a,.wav,.webm,.ogg,.mp4,.mov" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label><label>来源（可选）<input value={source} onChange={(event) => setSource(event.target.value)} placeholder="例如：自己的课程录音" /></label><label>原文（可选；有原文可立即生成练习）<textarea rows={6} value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="粘贴逐句原文；没有原文时可用 AI 转写" /></label><p className="muted tiny">文件保存在 NAS。无文稿时默认等待电脑本机转写；配置 DeepSeek 后，原文会用于整理本篇重点和理解练习。</p><button className="redesign-primary" disabled={busy || !title.trim() || (!file && !transcript.trim())} onClick={() => void submitUpload()}>{busy ? '正在上传…' : '保存并生成练习'}</button></div></div>}
+    {uploadOpen && <div className="redesign-overlay" onClick={() => setUploadOpen(false)}><div className="redesign-sheet" role="dialog" aria-modal="true" aria-label="导入素材" onClick={(event) => event.stopPropagation()}><div className="redesign-sheet-head"><h2>导入练习素材</h2><button onClick={() => setUploadOpen(false)} aria-label="关闭">✕</button></div><label>归属<select aria-label="导入素材归属" value={uploadCollection} onChange={e => setUploadCollection(e.target.value)}><option value="">自动归类</option>{collections.filter(c => !['link','lesson'].includes(c.library)).map(c => <option key={c.id} value={c.id}>{c.category} / {c.title}</option>)}</select></label><button className="redesign-text-button" onClick={() => { setUploadOpen(false); setBatchOpen(true) }}>新建分组 / 批量导入</button><label>标题<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：周末出行对话" /></label><label>音频或视频（可选）<input type="file" accept="audio/*,video/mp4,video/quicktime,.mp3,.m4a,.wav,.webm,.ogg,.mp4,.mov" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label><label>来源（可选）<input value={source} onChange={(event) => setSource(event.target.value)} placeholder="例如：自己的课程录音" /></label><label>原文（可选；有原文可立即生成练习）<textarea rows={6} value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="粘贴逐句原文；没有原文时可用 AI 转写" /></label><p className="muted tiny">文件保存在 NAS。无文稿时默认等待电脑本机转写；配置 DeepSeek 后，原文会用于整理本篇重点和理解练习。</p><button className="redesign-primary" disabled={busy || !title.trim() || (!file && !transcript.trim())} onClick={() => void submitUpload()}>{busy ? '正在上传…' : '保存并生成练习'}</button></div></div>}
   </div>
 }
