@@ -1,3 +1,4 @@
+import { parseTags } from '../lib/tags'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Enrichment, Entry, EntryKind } from '../types'
 import { detectKind } from '../lib/normalize'
@@ -17,6 +18,7 @@ import { speakEnglish } from '../lib/speech'
 import { explainWithAi, getAiStatus } from '../lib/media'
 
 export interface EntryFormInput {
+  tags: string[]
   text: string
   kind: EntryKind
   context?: string
@@ -63,6 +65,7 @@ export function CaptureModal({
   const editing = Boolean(entry)
   const [text, setText] = useState(initialText)
   const [context, setContext] = useState('')
+  const [tagText, setTagText] = useState('')
   const [note, setNote] = useState('')
   const [source, setSource] = useState('')
   const [sourceDetail, setSourceDetail] = useState('')
@@ -94,7 +97,7 @@ export function CaptureModal({
   useEffect(() => {
     if (!open) return
     void listCategories().then(setCategories)
-    setNewCategory('')
+    setNewCategory(''); setTagText((entry?.tags || []).join('，'))
     setShowCustomCat(false)
     setAiRevision(0); setAiSignature(''); setManualGloss(false); setEditGloss(false); setAiError(''); setSaveError(''); activeText.current = entry?.text.trim() || initialText.trim(); initializingText.current = activeText.current
 
@@ -173,6 +176,7 @@ export function CaptureModal({
       await setLastCategory(cat)
       await onSave({
         text: text.trim(),
+        tags: parseTags(tagText),
         kind,
         context: context.trim() || undefined,
         note: note.trim() || undefined,
@@ -315,6 +319,12 @@ export function CaptureModal({
               placeholder={hints.detail}
             />
           </label>
+        </section>
+
+        <section className="entry-tag-editor" aria-label="记录标签">
+          <label className="field"><span>标签</span><input aria-label="自定义标签" autoComplete="off" value={tagText} onChange={e => setTagText(e.target.value)} placeholder="自定义标签，用逗号分隔" /></label>
+          <div className="entry-tag-list">{parseTags(tagText).map(tag => <button type="button" className="chip active" key={tag} aria-label={`移除标签 ${tag}`} onClick={() => setTagText(parseTags(tagText).filter(t => t !== tag).join('，'))}>#{tag} ×</button>)}</div>
+          <div className="entry-tag-list">{[...new Set(entries.flatMap(item => item.tags || []))].filter(tag => !parseTags(tagText).includes(tag)).slice(0, 12).map(tag => <button type="button" className="chip" key={tag} onClick={() => setTagText([...parseTags(tagText), tag].join('，'))}>+ {tag}</button>)}</div>
         </section>
 
         <button

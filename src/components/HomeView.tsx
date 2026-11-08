@@ -19,6 +19,8 @@ interface Props {
 }
 
 export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary, onOpenOrigin, onDaily }: Props) {
+  const [tag, setTag] = useState('')
+  const tags = [...new Set(entries.flatMap(item => item.tags || []))].sort((a,b) => a.localeCompare(b, 'zh'))
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('全部')
   const [source, setSource] = useState('全部来源')
@@ -34,16 +36,17 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
     const result = entries.filter((entry) => {
       if (category !== '全部' && normalizeCategory(entry.category) !== category) return false
       if (source !== '全部来源' && entry.source !== source) return false
+      if (tag && !(entry.tags || []).includes(tag)) return false
       if (kind !== 'all' && entry.kind !== kind) return false
       if (!term) return true
-      return [entry.text, entry.context, entry.note, entry.source, entry.sourceDetail, entry.mySentence,
+      return [entry.text, entry.context, entry.note, entry.source, entry.sourceDetail, entry.mySentence, ...(entry.tags || []),
         ...(entry.enrichment?.definitionsZh ?? []), ...(entry.enrichment?.definitions ?? [])]
         .some((value) => value?.toLocaleLowerCase().includes(term))
     })
     return order === 'alphabetical'
       ? result.sort((a, b) => a.text.localeCompare(b.text, 'en'))
       : result.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-  }, [entries, query, category, source, kind, order])
+  }, [entries, query, category, source, kind, order, tag])
 
   const selected = filtered.find((entry) => entry.id === selectedId) || filtered[0]
 
@@ -63,6 +66,7 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
           <button type="button" className={category === '全部' ? 'chip active' : 'chip'} onClick={() => { setCategory('全部'); setSource('全部来源') }}>全部</button>
           {categoriesShown.map((item) => <button key={item} type="button" className={category === item ? 'chip active' : 'chip'} onClick={() => { setCategory(item); setSource('全部来源') }}>{item}</button>)}
         </div>
+        {tags.length > 0 && <div className="entry-tag-list"><label>标签 <select aria-label="按标签筛选" value={tag} onChange={e => setTag(e.target.value)}><option value="">全部标签</option>{tags.map(t => <option key={t}>{t}</option>)}</select></label>{tag && <button className="chip" onClick={() => setTag('')}>清除标签</button>}</div>}
         {adjustOpen && <div id="home-adjust" className="home-adjust">
           <label>类型<select value={kind} onChange={(event) => setKind(event.target.value as EntryKind | 'all')}>
             <option value="all">全部词句</option><option value="word">单词</option><option value="phrase">短语</option><option value="sentence">句子</option>
@@ -83,10 +87,10 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
       </div>
       {filtered.length === 0 ? <div className="home-empty panel">
         <p>{entries.length ? '没有找到符合条件的词句。' : '本子里还没有词句。看到想记的表达，就点上方的「记录新表达」。'}</p>
-        {entries.length > 0 && <button type="button" className="chip" onClick={() => { setQuery(''); setCategory('全部'); setSource('全部来源'); setKind('all') }}>清除筛选</button>}
+        {entries.length > 0 && <button type="button" className="chip" onClick={() => { setQuery(''); setCategory('全部'); setSource('全部来源'); setKind('all'); setTag('') }}>清除筛选</button>}
       </div> : <div className="redesign-home-layout"><div className="home-grid">
         {filtered.map((entry) => <div key={entry.id} onClick={() => setSelectedId(entry.id)} className={entry.kind === 'sentence' ? 'home-grid-item sentence' : 'home-grid-item'}>
-          <EntryCard key={entry.updatedAt} entry={entry} compact onEdit={() => onEdit(entry)} onUpdated={onUpdated} onOpenOrigin={entry.enrichment?.origin ? () => onOpenOrigin?.(entry.enrichment?.origin) : undefined} onDelete={() => onDelete(entry)} />
+          <div className="entry-tag-list">{(entry.tags || []).map(t => <button className="entry-tag" key={t} onClick={e => { e.stopPropagation(); setTag(t) }}>#{t}</button>)}</div><EntryCard key={entry.updatedAt} entry={entry} compact onEdit={() => onEdit(entry)} onUpdated={onUpdated} onOpenOrigin={entry.enrichment?.origin ? () => onOpenOrigin?.(entry.enrichment?.origin) : undefined} onDelete={() => onDelete(entry)} />
         </div>)}
       </div><aside className="redesign-detail">{selected && <><span className="redesign-tag">{selected.kind === 'word' ? '单词' : selected.kind === 'phrase' ? '短语' : '句子'} · {selected.category || '其他'}</span><h2>{selected.text}</h2>{selected.enrichment?.phonetic && <p>{selected.enrichment.phonetic}</p>}{selected.enrichment?.definitionsZh?.map((line) => <p className="detail-meaning" key={line}>{line}</p>)}{selected.enrichment?.definitions?.slice(0, 2).map((line) => <p className="detail-definition" key={line}>{line}</p>)}{selected.context && <div className="detail-context"><small>原句语境</small><p>{selected.context}</p></div>}{selected.source && <p className="detail-source">来源 · {selected.source}</p>}<button className="redesign-secondary" onClick={() => onEdit(selected)}>编辑这条记录</button></>}</aside></div>}
     </div>

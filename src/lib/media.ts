@@ -53,8 +53,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export async function listMedia(): Promise<MediaItem[]> {
-  const data = await request<{ items: MediaItem[] }>('/api/media')
-  return data.items
+  const controller = new AbortController(), timer = window.setTimeout(() => controller.abort(), 12000)
+  try { return (await request<{ items: MediaItem[] }>('/api/media', { signal: controller.signal })).items } finally { window.clearTimeout(timer) }
 }
 
 export async function getMedia(id: string): Promise<MediaItem> {

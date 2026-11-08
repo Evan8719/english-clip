@@ -1,7 +1,8 @@
+import { materialGroup } from '../lib/materialGroups'
 import { NavIcon } from './NavIcon'
 import { MaterialStudy } from './MaterialStudy'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getCurrentUser, getStoredUserId } from '../lib/sync'
+import { getStoredUserId } from '../lib/sync'
 import { getMedia, listMedia, patchMedia, processMedia, updateMediaTranscript, uploadMedia } from '../lib/media'
 import type { MediaItem } from '../lib/media'
 import { cacheMaterial, readCachedMaterial, estimateLevel, LEVELS } from '../lib/books'
@@ -29,13 +30,16 @@ const stamp = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.fl
 export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin, active = true }: Props) {
   const [starter, setStarter] = useState<StarterItem[]>([])
   const [mine, setMine] = useState<MediaItem[]>([])
-  const [loggedIn, setLoggedIn] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(Boolean(getStoredUserId()))
   const [selected, setSelected] = useState<Selection | null>(null)
   const [lineIndex, setLineIndex] = useState(0)
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const [answerOpen, setAnswerOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [level, setLevel] = useState('')
+  const [purpose, setPurpose] = useState(''), [series, setSeries] = useState('')
+  const [loading, setLoading] = useState(false)
+  const reloadTask = useRef<Promise<void> | null>(null)
   const [materialType, setMaterialType] = useState('all')
   const [sort, setSort] = useState(() => localStorage.getItem('ec.material-sort') || 'title')
   const [page, setPage] = useState(1)
@@ -61,10 +65,31 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   const selectToken = useRef(0)
   const lastPositionSave = useRef(0)
 
-  async function reloadMine() { const uid = getStoredUserId(); if (!uid) { setMine([]); return } try { const items = await listMedia(); if (uid !== getStoredUserId()) return; setMine(items); await cacheMaterial('index', items); for (const item of items) if (item.kind === 'book' && item.chapters?.length) await cacheMaterial(item.id, item) } catch (error) { if (uid !== getStoredUserId()) return; const cached = await readCachedMaterial<MediaItem[]>('index'); if (cached) { setMine(cached); setMessage('当前显示本机缓存，阅读与收藏仍可使用。') } else setMessage((error as Error).message) } }
+  async function reloadMine() {
+    if (reloadTask.current) return reloadTask.current
+    const uid = getStoredUserId()
+    setLoggedIn(Boolean(uid))
+    if (!uid) { setMine([]); return }
+    const task = (async () => {
+      setLoading(true)
+      try {
+        const cached = await readCachedMaterial<MediaItem[]>('index').catch(() => null)
+        if (uid !== getStoredUserId()) return
+        if (cached) setMine(cached)
+        const items = await listMedia()
+        if (uid !== getStoredUserId()) return
+        setMine(items); setMessage('')
+        await cacheMaterial('index', items).catch(() => undefined)
+      } catch (error) {
+        if (uid === getStoredUserId()) setMessage((error as Error).name === 'AbortError' ? '刷新超过 12 秒，已保留本机列表。可稍后重试。' : '素材刷新失败，已保留本机列表。请检查连接后重试。')
+      } finally { setLoading(false) }
+    })()
+    reloadTask.current = task
+    try { await task } finally { reloadTask.current = null }
+  }
   useEffect(() => {
     void fetch(`${packBase}catalog.json`).then((response) => response.json()).then((data: { items: StarterItem[] }) => setStarter(data.items)).catch(() => setStarter([]))
-    void getCurrentUser().then((user) => { setLoggedIn(Boolean(user)); void reloadMine() }).catch(() => void reloadMine())
+
   }, [])
   useEffect(() => {
     if (selected?.type !== 'mine' || (!['processing', 'queued-local', 'transcribing-local'].includes(selected.item.status) && selected.item.guideStatus !== 'processing')) return
@@ -129,7 +154,10 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   function savePlayback() { if (selected?.type === 'mine' && player.current) void patchMedia(selected.item.id, { playbackPosition: player.current.currentTime }).catch(() => undefined) }
   function resumePlayback() { if (selected?.type === 'mine' && player.current && selected.item.playbackPosition && selected.item.playbackPosition < player.current.duration) player.current.currentTime = selected.item.playbackPosition }
 
-  const filtered = mine.filter((item) => (!level || (level === 'unknown' ? !item.level : item.level === level)) && (materialType === 'all' ? !['link', 'lesson'].includes(item.kind) : (materialType === 'lesson' ? item.kind === 'lesson' : materialType === 'link' ? item.kind === 'link' : materialType === 'course' ? Boolean(item.courseId) : materialType === 'book' ? item.kind === 'book' : item.kind !== 'book' && item.kind !== 'link' && item.kind !== 'lesson' && !item.courseId)) && `${item.title} ${item.source}`.toLowerCase().includes(query.toLowerCase()))
+  const groups = mine.map(materialGroup)
+  const purposes = [...new Set(groups.map(g => g.purpose))]
+  const seriesOptions = [...new Set(groups.filter(g => !purpose || g.purpose === purpose).map(g => g.series))]
+  const filtered = mine.filter((item) => (!purpose || materialGroup(item).purpose === purpose) && (!series || materialGroup(item).series === series) && (!level || (level === 'unknown' ? !item.level : item.level === level)) && (materialType === 'all' ? !['link', 'lesson'].includes(item.kind) : (materialType === 'lesson' ? item.kind === 'lesson' : materialType === 'link' ? item.kind === 'link' : materialType === 'course' ? Boolean(item.courseId) : materialType === 'book' ? item.kind === 'book' : item.kind !== 'book' && item.kind !== 'link' && item.kind !== 'lesson' && !item.courseId)) && `${item.title} ${item.source}`.toLowerCase().includes(query.toLowerCase()))
   filtered.sort((a, b) => materialType === 'lesson' && sort === 'title' ? (a.episode || 999) - (b.episode || 999) || a.title.localeCompare(b.title) : sort === 'newest' ? b.createdAt.localeCompare(a.createdAt) : sort === 'level' ? (a.level || 'Z').localeCompare(b.level || 'Z') || a.title.localeCompare(b.title, 'en', { numeric: true }) : a.title.localeCompare(b.title, 'en', { numeric: true }))
   const pages = Math.max(1, Math.ceil(filtered.length / 12)), activePage = Math.min(page, pages)
   const shown = filtered.slice((activePage - 1) * 12, activePage * 12)
@@ -146,15 +174,17 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
       <button className="redesign-secondary" onClick={() => { if (loggedIn) setBatchOpen(!batchOpen); else onSettings() }}>批量导入 / 电子书</button>
       {!['link', 'lesson'].includes(materialType) && <button className="course-entry" onClick={() => { const first = mine.filter((item) => item.courseId === 'family-album').sort((a, b) => (a.episode || 0) - (b.episode || 0))[0]; if (first) choose({ type: 'mine', item: first }); else { setMaterialType('course'); setMessage(loggedIn ? '正在同步课程素材，请稍后重试。' : '登录 NAS 后即可使用课程文稿、训练和私人笔记。') } }}><span><strong>走遍美国 · Family Album USA</strong><small>26 集 · A2–B1 · 文稿与练习</small></span><span>开始学习 →</span></button>}
       {batchOpen && <MaterialImport onClose={() => setBatchOpen(false)} onDone={() => void reloadMine()} />}
-      <div className="library-controls"><button className="redesign-text-button" onClick={() => void reloadMine()}>刷新素材</button><input className="redesign-search" type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} placeholder="搜索素材标题或来源" aria-label="搜索素材" />
-      <label>排序 <select aria-label="素材排序" value={sort} onChange={(e) => { setSort(e.target.value); localStorage.setItem('ec.material-sort', e.target.value); setPage(1) }}><option value="title">名称 A–Z / 集数</option><option value="newest">最近添加</option><option value="level">等级</option></select></label><div className="library-type-tabs">{[['all', '全部'], ['audio', '听力'], ['book', '阅读'], ['course', '课程'], ['lesson', '精选视频'], ['link', '我的收集']].map(([value, label]) => <button key={value} className={materialType === value ? 'active' : ''} onClick={() => { setMaterialType(value); setPage(1) }}>{label}</button>)}</div>
+      <div className="library-controls"><button className="redesign-text-button" disabled={loading} onClick={() => void reloadMine()}>{loading ? '刷新中…' : '刷新素材'}</button><input className="redesign-search" type="search" name="material-search" autoComplete="off" data-lpignore="true" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} placeholder="搜索素材标题或来源" aria-label="搜索素材" />
+      <label>排序 <select aria-label="素材排序" value={sort} onChange={(e) => { setSort(e.target.value); localStorage.setItem('ec.material-sort', e.target.value); setPage(1) }}><option value="title">名称 A–Z / 集数</option><option value="newest">最近添加</option><option value="level">等级</option></select></label><div className="library-type-tabs">{[['all', '全部'], ['audio', '听力'], ['book', '阅读'], ['course', '课程'], ['lesson', '精选视频'], ['link', '我的收集']].map(([value, label]) => <button key={value} className={materialType === value ? 'active' : ''} onClick={() => { setMaterialType(value); setPurpose(''); setSeries(''); setPage(1) }}>{label}</button>)}</div>
+      <div className="material-group-controls"><label>用途<select aria-label="素材用途" value={purpose} onChange={e => { setPurpose(e.target.value); setSeries(''); setPage(1) }}><option value="">全部用途</option>{purposes.map(p => <option key={p}>{p}</option>)}</select></label><label>节目 / 系列<select aria-label="节目或系列" value={series} onChange={e => { setSeries(e.target.value); setPage(1) }}><option value="">全部节目 / 系列</option>{seriesOptions.map(p => <option key={p}>{p}</option>)}</select></label>{(query || purpose || series || level) && <button className="chip" onClick={() => { setQuery(''); setPurpose(''); setSeries(''); setLevel(''); setPage(1) }}>清除筛选</button>}</div>
       <div className="level-filters" aria-label="素材等级筛选">{['', ...LEVELS, 'unknown'].map((value) => <button key={value} className={level === value ? 'active' : ''} onClick={() => { setLevel(value); setPage(1) }}>{value === '' ? '全部等级' : value === 'unknown' ? '待评估' : value}</button>)}</div>
       <div className="library-page-bar"><span>{filtered.length} 份 · {activePage} / {pages} 页</span><div><button aria-label="上一页素材" disabled={activePage === 1} onClick={() => turnPage(activePage - 1)}>←</button><button aria-label="下一页素材" disabled={activePage === pages} onClick={() => turnPage(activePage + 1)}>→</button></div></div></div>
+      {loading && mine.length === 0 && <p role="status">正在读取素材列表…</p>}
       <div className="library-grid">
-      {(loggedIn || mine.length > 0) ? shown.map((item) => <button type="button" className={`media-list-row${item.kind === 'book' ? ' library-book' : ''}`} key={item.id} onClick={() => choose({ type: 'mine', item })}>{item.kind === 'book' && <StoryCover title={item.title} author={item.author} />}<span className="media-symbol"><NavIcon name={item.kind === 'lesson' ? 'play' : item.kind === 'link' ? 'link' : item.kind === 'book' ? 'book' : item.kind === 'video' ? 'play' : item.kind === 'audio' ? 'audio' : 'dictionary'} /></span><span><span className="library-kind">{item.kind === 'lesson' ? '精选视频' : item.kind === 'link' ? '我的收集' : item.kind === 'book' ? '阅读' : item.kind === 'video' ? '视频' : '听力'}</span><strong>{item.title}</strong>{(item.kind !== 'link' || item.level) && <span className="level-badge">{item.level || '待评估'}{item.level ? ' · 参考' : ''}</span>}<small>{item.source || '私人素材'}{item.kind === 'lesson' ? ' · 双语字幕' : item.kind !== 'link' && <> · {item.status === 'ready' ? `${item.exerciseCount ?? item.exercises.length} 张练习卡` : item.status === 'queued-local' ? '等本机转写' : item.status === 'transcribing-local' ? '本机转写中' : item.status === 'processing' ? '正在生成' : '待生成'}</>}</small></span><span className="media-arrow">›</span></button>) : <p className="media-empty">登录 NAS 账号后，手机和电脑可以使用同一份私人素材。</p>}
+      {(loggedIn || mine.length > 0) ? shown.map((item) => <button type="button" className={`media-list-row${item.kind === 'book' ? ' library-book' : ''}`} key={item.id} onClick={() => choose({ type: 'mine', item })}>{item.kind === 'book' && <StoryCover title={item.title} author={item.author} />}<span className="media-symbol"><NavIcon name={item.kind === 'lesson' ? 'play' : item.kind === 'link' ? 'link' : item.kind === 'book' ? 'book' : item.kind === 'video' ? 'play' : item.kind === 'audio' ? 'audio' : 'dictionary'} /></span><span><span className="library-kind">{item.kind === 'lesson' ? '精选视频' : item.kind === 'link' ? '我的收集' : item.kind === 'book' ? '阅读' : item.kind === 'video' ? '视频' : '听力'}</span><strong>{item.title}</strong>{(item.kind !== 'link' || item.level) && <span className="level-badge">{item.level || '待评估'}{item.level ? ' · 参考' : ''}</span>}<small>{materialGroup(item).purpose} · {materialGroup(item).series} · {item.source || '私人素材'}{item.kind === 'lesson' ? ' · 双语字幕' : item.kind !== 'link' && <> · {item.status === 'ready' ? `${item.exerciseCount ?? item.exercises.length} 张练习卡` : item.status === 'queued-local' ? '等本机转写' : item.status === 'transcribing-local' ? '本机转写中' : item.status === 'processing' ? '正在生成' : '待生成'}</>}</small></span><span className="media-arrow">›</span></button>) : <p className="media-empty">登录 NAS 账号后，手机和电脑可以使用同一份私人素材。</p>}
       </div>
       {filtered.length === 0 && mine.length > 0 && <p className="media-empty">没有符合条件的素材，可以切换等级或清空搜索。</p>}
-      {loggedIn && mine.length === 0 && <p className="media-empty">还没有上传素材。音频、视频和文字都可以放在这里。</p>}
+      {loggedIn && !loading && mine.length === 0 && <p className="media-empty">还没有上传素材。音频、视频和文字都可以放在这里。</p>}
       <div className="library-page-bottom"><button className="redesign-secondary" disabled={activePage === 1} onClick={() => turnPage(activePage - 1)}>上一页</button><span>{activePage} / {pages}</span><button className="redesign-secondary" disabled={activePage === pages} onClick={() => turnPage(activePage + 1)}>下一页</button></div>
       <details className="library-starters"><summary>内置听说素材 · ELLLO {starter.length} 段</summary><div className="library-grid">
       {starter.filter(() => !level || level === 'A2').filter((item) => `${item.title} ${item.titleZh}`.toLowerCase().includes(query.toLowerCase())).map((item) => <button type="button" className="media-list-row" key={item.id} onClick={() => choose({ type: 'starter', item })}><span className="media-symbol"><NavIcon name="audio" /></span><span><strong>{item.titleZh}</strong><span className="level-badge">A2 · 来源参考</span><small>{item.title} · {stamp(item.durationSeconds)}</small></span><span className="media-arrow">›</span></button>)}

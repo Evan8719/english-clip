@@ -171,6 +171,7 @@ export default function App() {
               source: input.source,
               sourceDetail: input.sourceDetail,
               mySentence: input.mySentence,
+              tags: input.tags,
               enrichment,
             })
           } else {

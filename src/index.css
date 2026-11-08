@@ -1142,3 +1142,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .voice-input { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block: 8px; }
 .practice-history { margin: 20px; padding: 16px; border-top: 1px solid var(--line); }
 .practice-history button { margin: 6px; padding: 10px; }
+
+/* Personal labels and material navigation share the existing quiet controls. */
+.entry-tag-list, .material-group-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+.entry-tag-list select, .material-group-controls select { max-width:100%; padding:10px; border:1px solid var(--border, #dde1ea); border-radius:12px; background:var(--surface, #fff); color:inherit; }
+.material-group-controls label { display:grid; gap:6px; flex:1 1 180px; min-width:0; }
+.entry-tag { border:0; background:transparent; color:#3453b0; font-size:12px; padding:4px 8px; cursor:pointer; }
+.entry-tag-editor { margin:12px 0; }

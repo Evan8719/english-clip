@@ -319,7 +319,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
         result.segmentCount = item.segments?.length || 0
         result.exerciseCount = item.exercises?.length || 0
         result.transcript = ''; result.exercises = []
-        delete result.chapters; delete result.segments; delete result.studyGuide; delete result.notes
+        delete result.transcriptOriginal; delete result.transcription; delete result.libraryPath; delete result.chapters; delete result.segments; delete result.studyGuide; delete result.notes
         return result
       }) })
     }
