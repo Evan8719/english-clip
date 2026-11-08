@@ -8,6 +8,8 @@
 - Keep visual preview, implementation, testing and NAS publication distinct. Existing authorization for backend work does not waive this UI approval rule. NAS publication remains on hold until the user requests it.
 - Confirmed content rule (2026-11-08): show reliable IPA for word entries; hide IPA and its empty placeholder for phrases and sentences, while keeping pronunciation actions available. Apply by the entry kind, not merely by counting spaces.
 - Visual preference: retain single-column, bold, clearly separate flip cards; offer a small set of calm selectable skins. Revise the visual Demo and obtain approval before implementing the new card/skin design.
+- Main mobile and desktop pages must retain a clearly visible global Settings gear in the upper-right. Appearance belongs inside Settings; do not replace this gear with only a palette or import icon. Per-material cover/thumbnail editing is a separate content action.
+- Preserve the desktop covered bookshelf and existing comfortable book-reader experience. Mobile redesign must not turn the desktop into an enlarged phone layout. Show a desktop visual Demo before changing desktop layout; retain centered readable text, optional contents, manual text selection and immersive reading.
 
 Local-first English vocabulary clipboard. UI language: Chinese. Product tone: quiet, no streaks/paywalls/notifications.
 
