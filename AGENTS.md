@@ -1,5 +1,12 @@
 # English Clip — notes for AI agents
 
+## User preference: visual approval before UI implementation (2026-11-08)
+
+- For interface, navigation, layout, icon and interaction changes, first deliver a visual Demo or mockup for the user to review.
+- Wait for the user's explicit approval of that Demo before changing application code for the proposed design. A request to explore or show a design is not approval to implement it.
+- After feedback, revise the Demo first; do not use repeated code changes or deployment as the design review process.
+- Keep visual preview, implementation, testing and NAS publication distinct. Existing authorization for backend work does not waive this UI approval rule. NAS publication remains on hold until the user requests it.
+
 Local-first English vocabulary clipboard. UI language: Chinese. Product tone: quiet, no streaks/paywalls/notifications.
 
 ## Stack
