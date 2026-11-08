@@ -6,6 +6,8 @@
 - Wait for the user's explicit approval of that Demo before changing application code for the proposed design. A request to explore or show a design is not approval to implement it.
 - After feedback, revise the Demo first; do not use repeated code changes or deployment as the design review process.
 - Keep visual preview, implementation, testing and NAS publication distinct. Existing authorization for backend work does not waive this UI approval rule. NAS publication remains on hold until the user requests it.
+- Confirmed content rule (2026-11-08): show reliable IPA for word entries; hide IPA and its empty placeholder for phrases and sentences, while keeping pronunciation actions available. Apply by the entry kind, not merely by counting spaces.
+- Visual preference: retain single-column, bold, clearly separate flip cards; offer a small set of calm selectable skins. Revise the visual Demo and obtain approval before implementing the new card/skin design.
 
 Local-first English vocabulary clipboard. UI language: Chinese. Product tone: quiet, no streaks/paywalls/notifications.
 
