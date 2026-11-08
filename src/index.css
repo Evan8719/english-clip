@@ -1149,3 +1149,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .material-group-controls label { display:grid; gap:6px; flex:1 1 180px; min-width:0; }
 .entry-tag { border:0; background:transparent; color:#3453b0; font-size:12px; padding:4px 8px; cursor:pointer; }
 .entry-tag-editor { margin:12px 0; }
+
+.continue-learning { margin: 0 0 24px; padding: 0 32px; }
+.continue-learning h2 { font-size: 18px; margin: 0 0 12px; }
+.continue-row { border-bottom: 1px solid #dde1ea; padding: 10px 0; }
+.continue-open { display:flex; align-items:center; gap:12px; text-align:left; width:100%; border:0; background:transparent; color:inherit; cursor:pointer; padding:8px 0; }
+.continue-open svg { width:24px; height:24px; flex-shrink:0; color:#3453b0; }
+.continue-open span { min-width:0; }
+.continue-open strong, .continue-open small { display:block; overflow-wrap:anywhere; }
+.continue-open small, .continue-conflict p { font-size:13px; color:#596477; margin:5px 0; }
+.continue-conflict .chip { margin-right:8px; }
+
+@media (max-width: 700px) { .continue-learning { padding: 0 18px; } }

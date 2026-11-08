@@ -1,3 +1,4 @@
+import { mergeLearning } from './learningProgress'
 import { authorizedApiFetch } from './sync'
 import type { BookChapter } from './books'
 export interface TimedWord { start: number; end: number; text: string }
@@ -12,6 +13,8 @@ export interface Exercise {
 }
 
 export interface MediaItem {
+  revision?: number
+  lastStudiedAt?: string
   id: string
   title: string
   kind: 'audio' | 'video' | 'text' | 'book' | 'link' | 'lesson'
@@ -54,12 +57,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export async function listMedia(): Promise<MediaItem[]> {
   const controller = new AbortController(), timer = window.setTimeout(() => controller.abort(), 12000)
-  try { return (await request<{ items: MediaItem[] }>('/api/media', { signal: controller.signal })).items } finally { window.clearTimeout(timer) }
+  try { return await Promise.all((await request<{ items: MediaItem[] }>('/api/media', { signal: controller.signal })).items.map(mergeLearning)) } finally { window.clearTimeout(timer) }
 }
 
 export async function getMedia(id: string): Promise<MediaItem> {
-  const data = await request<{ item: MediaItem }>(`/api/media/${id}`)
-  return data.item
+  const controller = new AbortController(), timer = window.setTimeout(() => controller.abort(), 12000)
+  try { return await mergeLearning((await request<{ item: MediaItem }>(`/api/media/${id}`, { signal: controller.signal })).item) } finally { window.clearTimeout(timer) }
 }
 export async function patchMedia(id: string, changes: object): Promise<MediaItem> {
   return (await request<{ item: MediaItem }>(`/api/media/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) })).item

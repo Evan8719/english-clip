@@ -1,3 +1,4 @@
+import { saveLearning } from '../lib/learningProgress'
 import { useEffect, useRef, useState } from 'react'
 import { patchMedia, type MediaItem } from '../lib/media'
 import { getLemma } from '../lib/lexicon'
@@ -29,13 +30,9 @@ export function BookReader({ item, onBack, onCapture, onPractice }: { item: Medi
     window.getSelection()?.removeAllRanges()
   }
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const next = { ...item, level, readingPosition: { chapter, paragraph } }
-      void cacheMaterial(item.id, next)
-      void patchMedia(item.id, { readingPosition: next.readingPosition }).catch(() => setStatus('阅读位置已保存在本机；联网后继续阅读时会同步。'))
-    }, 800)
-    return () => window.clearTimeout(timer)
-  }, [chapter, paragraph, item, level])
+    void saveLearning(item, { readingPosition: { chapter, paragraph } }).catch(() => setStatus('学习位置保存失败，请检查本机空间'))
+  }, [chapter, paragraph, item])
+  useEffect(() => { void cacheMaterial(item.id, { ...item, level }).catch(() => setStatus('本机空间不足，请检查存储空间')) }, [item, level])
   useEffect(() => { if (item.readingPosition) content.current?.querySelector(`[data-paragraph="${item.readingPosition.paragraph || 0}"]`)?.scrollIntoView({ block: 'center' }) }, [item])
   useEffect(() => { localStorage.setItem('ec.reader-size', String(size)); localStorage.setItem('ec.reader-theme', theme) }, [size, theme])
   useEffect(() => {

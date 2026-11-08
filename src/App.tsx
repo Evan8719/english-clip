@@ -1,3 +1,4 @@
+import { flushLearning } from './lib/learningProgress'
 import { NavIcon } from './components/NavIcon'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Entry, Familiarity, TabId } from './types'
@@ -59,6 +60,13 @@ export default function App() {
     }
   }, [refresh])
 
+  useEffect(() => {
+    const sync = () => { void flushLearning() }
+    sync(); window.addEventListener('online', sync)
+    const timer = window.setInterval(sync, 30000)
+    return () => { window.removeEventListener('online', sync); window.clearInterval(timer) }
+  }, [])
+
   function openCreate(seed: CaptureSeed = { text: '' }) {
     setEditingEntry(null)
     setCaptureSeed(seed)
@@ -114,6 +122,7 @@ export default function App() {
       <main ref={workspace} className="redesign-workspace">{materialsVisited && tab !== 'materials' && tab !== 'practice' && <button className="redesign-text-button resume-material-button" onClick={() => setTab('materials')}>← 继续刚才的素材</button>}
         {tab === 'home' && (
           <HomeView
+            onContinue={id => { setMaterialSession(n => n + 1); setMaterialOrigin({ materialId: id }); setTab('materials') }}
             entries={entries}
             categories={categories}
             onEdit={openEdit}

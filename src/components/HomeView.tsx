@@ -1,3 +1,4 @@
+import { ContinueLearning } from './ContinueLearning'
 import { useMemo, useState } from 'react'
 import type { Entry, EntryKind } from '../types'
 import { categoriesForFilter, listSources, normalizeCategory } from '../lib/categories'
@@ -5,6 +6,7 @@ import { EntryCard } from './EntryCard'
 import { NavIcon } from './NavIcon'
 
 interface Props {
+  onContinue: (id: string) => void
   onOpenOrigin?: (origin: NonNullable<Entry['enrichment']>['origin']) => void
   onDaily: () => void
   entries: Entry[]
@@ -18,7 +20,7 @@ interface Props {
   onDictionary: () => void
 }
 
-export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary, onOpenOrigin, onDaily }: Props) {
+export function HomeView({ onContinue, entries, categories, onEdit, onUpdated, onDelete, lexiconStatus, onCapture, onMaterials, onDictionary, onOpenOrigin, onDaily }: Props) {
   const [tag, setTag] = useState('')
   const tags = [...new Set(entries.flatMap(item => item.tags || []))].sort((a,b) => a.localeCompare(b, 'zh'))
   const [query, setQuery] = useState('')
@@ -57,6 +59,7 @@ export function HomeView({ entries, categories, onEdit, onUpdated, onDelete, lex
         <button type="button" className="redesign-primary home-record" onClick={onCapture}><NavIcon name="plus" />记录新表达</button>
       </header>
 
+      <ContinueLearning onOpen={onContinue} />
       <div className="home-controls">
         <div className="home-control-main">
           <input className="home-search" type="search" aria-label="搜索已记录的词句" placeholder="搜索词句、释义或来源" value={query} onChange={(event) => setQuery(event.target.value)} />

@@ -1,3 +1,4 @@
+import { createProgressStore } from './media-progress.mjs'
 import { streamConversation, explainExpression, assistantConfig, testAssistant, listAssistantModels } from './deepseek.mjs'
 import { connectionMode } from './ai-network.mjs'
 import { createDailyLearningApi } from './daily-learning.mjs'
@@ -49,6 +50,7 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
   const preferencesFile = join(root, 'ai-preferences.json')
   mkdirSync(filesDir, { recursive: true })
   mkdirSync(jobsDir, { recursive: true })
+  const progressStore = createProgressStore(root)
   let index = existsSync(indexFile) ? JSON.parse(readFileSync(indexFile, 'utf8')) : {}
   let keys = existsSync(keysFile) ? JSON.parse(readFileSync(keysFile, 'utf8')) : {}
   const preferences = existsSync(preferencesFile) ? JSON.parse(readFileSync(preferencesFile, 'utf8')) : {}
@@ -66,13 +68,13 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     catch { item.catalogError = '可读目录暂未更新，原资料仍可使用' }
   }
   const bucket = (uid) => (index[uid] ||= {})
-  const dailyApi = createDailyLearningApi({ dataDir, sendJson, getEntries, getMaterials: uid => Object.values(bucket(uid)), getAssistant: uid => { const provider = providerFor(uid); return { provider, apiKey: readKey(uid, provider), settings: configFor(uid, provider) } } })
+  const dailyApi = createDailyLearningApi({ dataDir, sendJson, getEntries, getMaterials: uid => Object.values(bucket(uid)).map(item => ({ ...item, ...progressStore.read(item) })), getAssistant: uid => { const provider = providerFor(uid); return { provider, apiKey: readKey(uid, provider), settings: configFor(uid, provider) } } })
   const get = (uid, id) => bucket(uid)[id]
   const fileFor = (item) => join(filesDir, item.ownerId, `${item.id}.${item.extension}`)
   const sign = (item, exp) => createHmac('sha256', secret).update(`${item.ownerId}:${item.id}:${exp}`).digest('hex')
   const publicItem = (item) => {
     const exp = Math.floor(Date.now() / 1000) + 3600
-    return { ...item, streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null }
+    return { ...item, ...progressStore.read(item), streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null }
   }
   for (const items of Object.values(index)) for (const item of Object.values(items)) {
     if (item.status === 'processing') { item.status = 'failed'; item.error = '服务重启中断了处理，请重新生成'; save() }
@@ -355,13 +357,19 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       if (kind === 'text' && transcript) void prepareGuide(item)
       return sendJson(res, 201, { ok: true, item: publicItem(item) })
     }
-    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local|guide))?$/.exec(path)
+    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local|guide|progress))?$/.exec(path)
     if (!match) return false
     const [, id, action] = match
     const item = user ? get(user.id, id) : Object.values(index).map((items) => items[id]).find(Boolean)
     if (!item) return reject(res, 404, '素材不存在')
     if (action === 'file' && (req.method === 'GET' || req.method === 'HEAD')) return serveFile(req, res, item, url)
     if (!user) return reject(res, 401, '未登录')
+    if (action === 'progress' && req.method === 'PATCH') {
+      const body = await readBody(req)
+      if (!Number.isFinite(body.playbackPosition) && !body.readingPosition) return reject(res, 400, '请提供学习位置')
+      const result = progressStore.write(item, body)
+      return sendJson(res, result.conflict ? 409 : 200, { ok: !result.conflict, ...result })
+    }
     if ((item.kind === 'link' && action && action !== 'guide') || (item.kind === 'lesson' && ['local', 'process'].includes(action))) return reject(res, 400, '收集链接不需要上传或转写')
     if (action === 'guide' && req.method === 'POST') {
       if (!readKey(user.id, providerFor(user.id))) return reject(res, 409, '请先在设置中配置所选 AI 服务')
@@ -409,6 +417,11 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
     if (!action && req.method === 'PATCH') {
       if (['processing', 'transcribing-local'].includes(item.status)) return reject(res, 409, '请等待当前处理完成后编辑')
       const body = await readBody(req)
+      if (Object.keys(body).every(key => ['readingPosition', 'playbackPosition'].includes(key)) && (body.readingPosition || Number.isFinite(body.playbackPosition))) {
+        progressStore.write(item, body, true)
+        return sendJson(res, 200, { ok: true, item: publicItem(item) })
+      }
+
       if (typeof body.level === 'string') { item.level = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(body.level) ? body.level : ''; item.levelBasis = '手动选择' }
       if (Number.isFinite(body.playbackPosition)) item.playbackPosition = Math.max(0, Math.min(86400, body.playbackPosition))
       if (body.readingPosition && item.kind === 'book') item.readingPosition = { chapter: Math.max(0, Math.min(item.chapters.length - 1, Number(body.readingPosition.chapter) || 0)), paragraph: Math.max(0, Math.floor(Number(body.readingPosition.paragraph) || 0)) }

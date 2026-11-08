@@ -1,3 +1,4 @@
+import { saveLearning, mergeLearning } from '../lib/learningProgress'
 import { materialGroup } from '../lib/materialGroups'
 import { NavIcon } from './NavIcon'
 import { MaterialStudy } from './MaterialStudy'
@@ -100,9 +101,9 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   useEffect(() => {
     if (!initialOrigin) return
     const token = ++selectToken.current
-    void getMedia(initialOrigin.materialId).catch(() => readCachedMaterial<MediaItem>(initialOrigin.materialId)).then((item) => {
+    void getMedia(initialOrigin.materialId).catch(() => readCachedMaterial<MediaItem>(initialOrigin.materialId)).then(async item => item ? await mergeLearning(item) : null).then((item) => {
       if (token !== selectToken.current || !item) return
-      if (item.kind === 'book') item = { ...item, readingPosition: { chapter: initialOrigin.chapter || 0, paragraph: initialOrigin.paragraph || 0 } }
+      if (item.kind === 'book' && (initialOrigin.chapter !== undefined || initialOrigin.paragraph !== undefined)) item = { ...item, readingPosition: { chapter: initialOrigin.chapter || 0, paragraph: initialOrigin.paragraph || 0 } }
       else if (initialOrigin.timestamp !== undefined) item = { ...item, playbackPosition: initialOrigin.timestamp }
       setSelected({ type: 'mine', item })
     })
@@ -131,7 +132,7 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
     setLineIndex(0); setExerciseIndex(0); setAnswerOpen(false); setLoop(false); setPointA(null); setPointB(null); setTime(0)
     if (next?.type === 'mine') {
       setMessage('正在打开素材…')
-      void getMedia(next.item.id).catch(() => readCachedMaterial<MediaItem>(next.item.id)).then((item) => {
+      void getMedia(next.item.id).catch(() => readCachedMaterial<MediaItem>(next.item.id)).then(async item => item ? await mergeLearning(item) : null).then((item) => {
         if (token !== selectToken.current) return
         if (!item || (item.kind === 'book' && !item.chapters?.length)) { setMessage('素材尚未缓存，请联网后打开一次'); return }
         void cacheMaterial(item.id, item); setSelected({ type: 'mine', item }); setMessage('')
@@ -151,7 +152,7 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   }
   function onTimeUpdate() { const node = player.current; if (!node) return; if (loop && pointA !== null && pointB !== null && node.currentTime >= pointB) node.currentTime = pointA; setTime(node.currentTime); if (selected?.type === 'mine' && selected.item.segments?.length) { const index = selected.item.segments.findIndex((part) => node.currentTime >= part.start && node.currentTime < part.end); if (index >= 0) setLineIndex(index) } if (Date.now() - lastPositionSave.current > 15000) { lastPositionSave.current = Date.now(); savePlayback() } }
   function seekTo(seconds: number) { if (player.current) { player.current.currentTime = seconds; setTime(seconds); void player.current.play().catch(() => undefined) } }
-  function savePlayback() { if (selected?.type === 'mine' && player.current) void patchMedia(selected.item.id, { playbackPosition: player.current.currentTime }).catch(() => undefined) }
+  function savePlayback() { if (selected?.type === 'mine' && player.current) void saveLearning(selected.item, { playbackPosition: player.current.currentTime }).catch(() => undefined) }
   function resumePlayback() { if (selected?.type === 'mine' && player.current && selected.item.playbackPosition && selected.item.playbackPosition < player.current.duration) player.current.currentTime = selected.item.playbackPosition }
 
   const groups = mine.map(materialGroup)
