@@ -1397,3 +1397,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 :root[data-appearance] .book-reader:is(.reader-theme-paper,.reader-theme-white,.reader-theme-night) :is(.reader-toolbar,.reader-settings>div,.reader-selection) { background:var(--card); color:var(--ink); }
 :root[data-appearance] .redesign-mobile-nav .redesign-nav-plus { color:var(--accent-ink); }
 :root[data-appearance] .redesign-heading p:not(.redesign-eyebrow) { color:var(--muted); }
+:root[data-appearance] :is(.app-library-tabs button,.app-continue-book small,.app-material-search svg,.app-episode-number) { color:var(--muted); }
+:root[data-appearance] .app-library-tabs button[aria-current=page] { color:var(--accent); }
+:root[data-appearance] :is(input,textarea)::placeholder { color:var(--muted); opacity:1; }
+:root[data-appearance] .icon-action { background:var(--surface); color:var(--accent); }
+:root[data-appearance] .game-options button.correct { background:var(--good-bg); color:var(--good); border-color:var(--good); }
