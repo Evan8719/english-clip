@@ -1207,7 +1207,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .app-material-search { display:flex; align-items:center; gap:9px; background:#eceff4; border-radius:12px; padding:11px 14px; flex:1; min-width:0; }
 .app-material-search svg { color:#596477; width:20px; flex-shrink:0; }
 .app-material-search input { min-width:0; width:100%; border:0; outline:none; background:transparent; color:inherit; font-size:14px; }
-.app-material-search:focus-within { outline:2px solid #3453b0; outline-offset:2px; }
 .app-category-tabs, .app-active-filters { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
 .app-category-tabs button { border:0; padding:9px 18px; background:#e8ebf1; border-radius:10px; color:#596477; cursor:pointer; }
 .app-category-tabs button.active { background:#3453b0; color:white; }

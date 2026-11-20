@@ -1,4 +1,5 @@
 import { createMediaCovers } from './media-covers.mjs'
+import { buildMaterialThumbnail, thumbnailFile } from './material-thumbnails.mjs'
 import { createMaterialTaxonomy } from './material-taxonomy.mjs'
 import { createProgressStore } from './media-progress.mjs'
 import { streamConversation, explainExpression, suggestExpressionScenes, assistantConfig, testAssistant, listAssistantModels } from './deepseek.mjs'
@@ -75,10 +76,19 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
   const dailyApi = createDailyLearningApi({ dataDir, sendJson, getEntries, getMaterials: uid => Object.values(bucket(uid)).map(item => ({ ...item, ...progressStore.read(item) })), getAssistant: uid => { const provider = providerFor(uid); return { provider, apiKey: readKey(uid, provider), settings: configFor(uid, provider) } } })
   const get = (uid, id) => bucket(uid)[id]
   const fileFor = (item) => join(filesDir, item.ownerId, `${item.id}.${item.extension}`)
-  const sign = (item, exp) => createHmac('sha256', secret).update(`${item.ownerId}:${item.id}:${exp}`).digest('hex')
+  const sign = (item, exp, purpose = '') => createHmac('sha256', secret).update(`${item.ownerId}:${item.id}:${exp}${purpose}`).digest('hex')
+  let thumbnailQueue = Promise.resolve(), pendingThumbnails = 0
+  function queueThumbnail(item) {
+    if (pendingThumbnails >= 16) return
+    pendingThumbnails++
+    thumbnailQueue = thumbnailQueue.then(() => buildMaterialThumbnail(root, item))
+      .catch(() => undefined).finally(() => { pendingThumbnails-- })
+  }
   const publicItem = (item) => {
     const exp = Math.floor(Date.now() / 1000) + 3600
-    return { ...item, organization: taxonomy.resolve(item), ...covers.urls(item.ownerId, 'item', item.id), ...progressStore.read(item), streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null }
+    const thumb = thumbnailFile(root, item)
+    const thumbExp = Math.floor(Date.now() / 3600000) * 3600 + 7200
+    return { ...item, organization: taxonomy.resolve(item), ...covers.urls(item.ownerId, 'item', item.id), ...progressStore.read(item), streamUrl: item.extension ? `/api/media/${item.id}/file?exp=${exp}&sig=${sign(item, exp)}` : null, ...(thumb && existsSync(thumb) ? { thumbnailUrl: `/api/media/${item.id}/thumbnail?exp=${thumbExp}&sig=${sign(item, thumbExp, ':thumbnail')}` } : {}) }
   }
   for (const items of Object.values(index)) for (const item of Object.values(items)) {
     if (item.status === 'processing') { item.status = 'failed'; item.error = '服务重启中断了处理，请重新生成'; save() }
@@ -191,11 +201,28 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       item.updatedAt = new Date().toISOString()
       readable(item)
       save()
+      queueThumbnail(item)
     } catch (error) {
       stream.destroy()
       rmSync(tmp, { force: true })
       throw error
     }
+  }
+
+  function serveThumbnail(req, res, item, url) {
+    const exp = Number(url.searchParams.get('exp'))
+    const signature = url.searchParams.get('sig') || ''
+    const expected = sign(item, exp, ':thumbnail')
+    if (!Number.isSafeInteger(exp) || exp <= Date.now() / 1000 || !/^[a-f0-9]{64}$/.test(signature)
+      || !timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) return reject(res, 403, '缩略图链接已过期')
+    const file = thumbnailFile(root, item)
+    const size = file && statSync(file, { throwIfNoEntry: false })?.size
+    if (!size) return reject(res, 404, '缩略图不存在')
+    res.writeHead(200, { 'Content-Type': 'image/webp', 'Content-Length': size, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' })
+    if (req.method === 'HEAD') return res.end()
+    const stream = createReadStream(file)
+    stream.on('error', () => res.destroy())
+    stream.pipe(res)
   }
 
   function serveFile(req, res, item, url) {
@@ -376,12 +403,13 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       if (kind === 'text' && transcript) void prepareGuide(item)
       return sendJson(res, 201, { ok: true, item: publicItem(item) })
     }
-    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|process|local|guide|progress|organization))?$/.exec(path)
+    const match = /^\/api\/media\/([0-9a-f-]{36})(?:\/(file|thumbnail|process|local|guide|progress|organization))?$/.exec(path)
     if (!match) return false
     const [, id, action] = match
     const item = user ? get(user.id, id) : Object.values(index).map((items) => items[id]).find(Boolean)
     if (!item) return reject(res, 404, '素材不存在')
     if (action === 'file' && (req.method === 'GET' || req.method === 'HEAD')) return serveFile(req, res, item, url)
+    if (action === 'thumbnail') return req.method === 'GET' || req.method === 'HEAD' ? serveThumbnail(req, res, item, url) : reject(res, 405, '方法不允许')
     if (!user) return reject(res, 401, '未登录')
     if (action === 'organization' && req.method === 'PATCH') {
       taxonomy.place(user.id, item, await readBody(req))

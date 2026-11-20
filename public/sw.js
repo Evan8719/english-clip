@@ -1,5 +1,5 @@
 /* English Clip — lightweight offline shell + lexicon cache */
-const VERSION = 'english-clip-v19'
+const VERSION = 'english-clip-v20'
 const SHELL = [
   '/',
   '/index.html',
@@ -35,7 +35,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url)
   const isStaticPack =
-    url.pathname.endsWith('/lexicon.json') || url.pathname.endsWith('/zh-gloss.json')
+    url.pathname.endsWith('/lexicon.json') || url.pathname.endsWith('/zh-gloss.json') ||
+    url.pathname.endsWith('/phonetics-en-us-v1.json.gz')
   const isSameOrigin = url.origin === self.location.origin
 
   if (isStaticPack) {

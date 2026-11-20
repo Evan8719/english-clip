@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export function PreparedVideo({ src, active, start, seek, onProgress }: { src: string; active: boolean; start: number; seek?: { time: number; key: number }; onProgress: (time: number) => void }) {
+export function PreparedVideo({ src, poster, active, start, seek, onProgress }: { src: string; poster?: string; active: boolean; start: number; seek?: { time: number; key: number }; onProgress: (time: number) => void }) {
   const video = useRef<HTMLVideoElement>(null)
   const progress = useRef(onProgress); progress.current = onProgress
   useEffect(() => {
@@ -10,5 +10,5 @@ export function PreparedVideo({ src, active, start, seek, onProgress }: { src: s
     return () => { window.clearInterval(timer); node?.pause() }
   }, [active])
   useEffect(() => { if (seek && video.current) { video.current.currentTime = seek.time; void video.current.play().catch(() => undefined) } }, [seek])
-  return <video ref={video} className="prepared-video" src={src} controls playsInline preload="metadata" onLoadedMetadata={() => { if (video.current && start > 0 && start < video.current.duration) video.current.currentTime = start }} onTimeUpdate={() => { if (video.current) progress.current(video.current.currentTime) }} />
+  return <video ref={video} className="prepared-video" src={src} poster={poster} controls playsInline preload="metadata" onLoadedMetadata={() => { if (video.current && start > 0 && start < video.current.duration) video.current.currentTime = start }} onTimeUpdate={() => { if (video.current) progress.current(video.current.currentTime) }} />
 }

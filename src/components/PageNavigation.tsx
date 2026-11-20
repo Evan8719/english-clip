@@ -28,8 +28,8 @@ export function GlobalPageHeader({ onSettings }: { onSettings: (title: string) =
   }, [])
   if (!page) return null
   return <header ref={headerRef} className="fidelity-global-header"><div className="fidelity-header-row">
-    <div className="fidelity-header-left">{page.onBack && <button className="fidelity-icon" aria-label={`返回${page.backLabel || page.path.at(-2) || '本子'}`} onClick={page.onBack}><NavIcon name="previous" /></button>}</div>
-    <div className="fidelity-brand"><img src={`${import.meta.env.BASE_URL}clip-wordcard.webp`} alt="" /><strong>英语剪贴本</strong></div>
+    <div className={`fidelity-header-left${page.onBack ? ' has-back' : ''}`}>{page.onBack && <button className="fidelity-icon" aria-label={`返回${page.backLabel || page.path.at(-2) || '本子'}`} onClick={page.onBack}><NavIcon name="previous" /></button>}<img src={`${import.meta.env.BASE_URL}clip-wordcard.webp`} alt="" /></div>
+    <strong className="fidelity-brand" lang="en">English Clip</strong>
     <button className="fidelity-icon" aria-label="全局设置" onClick={() => onSettings(page.title)}><NavIcon name="settings" /></button>
   </div>{page.path.length > 1 && <nav className="fidelity-breadcrumb" aria-label="当前位置">{page.path.map((part, index) => {
     const last = index === page.path.length - 1

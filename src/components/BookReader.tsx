@@ -118,7 +118,7 @@ export function BookReader({ item, onCapture, onPractice }: { item: MediaItem; o
       </header>
       <div className="reader-location"><span>第 {chapter + 1} / {chapters.length} 章</span><progress className="learning-progress" value={paragraph + 1} max={current?.paragraphs.length || 1} aria-label="本章阅读位置" /></div>
     </div>
-    <div className="reader-layout" ref={readingPane}><aside className="reader-contents"><StoryCover title={item.title} author={item.author} coverUrl={item.coverUrl} /><h2>目录</h2><select aria-label="选择章节" value={chapter} onChange={(event) => changeChapter(Number(event.target.value))}>{chapters.map((part, index) => <option key={index} value={index}>{part.title}</option>)}</select><p>{item.author || '原著阅读'} · 参考等级 {level || '待评估'}</p><p>拖选文字，或长按选词后，可查词、记录和复述。</p></aside>
+    <div className="reader-layout" ref={readingPane}><aside className="reader-contents"><StoryCover {...item} /><h2>目录</h2><select aria-label="选择章节" value={chapter} onChange={(event) => changeChapter(Number(event.target.value))}>{chapters.map((part, index) => <option key={index} value={index}>{part.title}</option>)}</select><p>{item.author || '原著阅读'} · 参考等级 {level || '待评估'}</p><p>拖选文字，或长按选词后，可查词、记录和复述。</p></aside>
       <article ref={content} className="reader-text" style={{ fontSize: size }} onMouseUp={() => void pick()}>
         <h1>{heading}</h1>
         {current?.paragraphs.slice(firstBodyParagraph).map((text, offset) => {

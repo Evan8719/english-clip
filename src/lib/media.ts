@@ -18,6 +18,7 @@ export interface MaterialOrganization { library: string; category: string; colle
 export interface MediaItem {
   durationSeconds?: number
   coverUrl?: string
+  thumbnailUrl?: string
   coverFullUrl?: string
   organization?: MaterialOrganization
   revision?: number

@@ -3,7 +3,8 @@ import { NavIcon } from './NavIcon'
 import { MaterialSheet } from './MaterialSheet'
 import { useEffect, useState } from 'react'
 import type { Entry, Familiarity } from '../types'
-import { frequencyLabel, getLemma } from '../lib/lexicon'
+import { frequencyLabel } from '../lib/lexicon'
+import { lookupWordPhonetic } from '../lib/phonetics'
 import { ensureZhEnrichment } from '../lib/enrich'
 import { updateEntry } from '../db/entries'
 import { speakEnglish } from '../lib/speech'
@@ -42,16 +43,17 @@ export function EntryCard({
   const [sentenceDraft, setSentenceDraft] = useState(entry.mySentence ?? '')
   const [savingSentence, setSavingSentence] = useState(false)
   const [dictionarySound, setDictionarySound] = useState<{ text: string; value?: string }>()
+  const savedPhonetic = entry.kind === 'word' ? entry.enrichment?.phonetic?.trim() : undefined
   useEffect(() => { setZh(entry.enrichment?.definitionsZh || []) }, [entry.enrichment?.definitionsZh])
   useEffect(() => {
-    if (entry.kind !== 'word' || entry.enrichment?.phonetic) return
+    if (entry.kind !== 'word' || savedPhonetic) return
     let active = true
-    void getLemma(entry.text).then(lemma => {
-      if (active) setDictionarySound({ text:entry.text, value:lemma?.phonetic })
+    void lookupWordPhonetic(entry.text).then(value => {
+      if (active) setDictionarySound({ text: entry.text, value })
     }).catch(() => undefined)
     return () => { active = false }
-  }, [entry.kind, entry.text, entry.enrichment?.phonetic])
-  const phonetic = entry.kind === 'word' && (entry.enrichment?.phonetic || (dictionarySound?.text === entry.text ? dictionarySound.value : undefined))
+  }, [entry.kind, entry.text, savedPhonetic])
+  const phonetic = entry.kind === 'word' && (savedPhonetic || (dictionarySound?.text === entry.text ? dictionarySound.value : undefined))
 
   const kindLabel =
     entry.kind === 'word' ? '单词' : entry.kind === 'phrase' ? '短语' : '句子'
