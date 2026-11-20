@@ -11,7 +11,7 @@ import { TimedWords } from './TimedWords'
 import { MaterialStudy } from './MaterialStudy'
 
 interface CaptureSeed { text: string; context?: string; category?: string; source?: string; sourceDetail?: string; origin?: { materialId: string; timestamp?: number } }
-export function LinkCollector({ onDone, onClose }: { onDone: (item: MediaItem) => void; onClose: () => void }) {
+export function LinkCollector({ onDone }: { onDone: (item: MediaItem) => void }) {
   const [url, setUrl] = useState(''), [title, setTitle] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('')
   const info = describeLink(url)
   async function save() {
@@ -19,10 +19,10 @@ export function LinkCollector({ onDone, onClose }: { onDone: (item: MediaItem) =
     setBusy(true); setError('')
     try { onDone(await uploadMedia({ kind: 'link', title: title.trim() || `${info.provider}${info.videoId ? ' · ' + info.videoId : info.host === info.provider ? '' : ' · ' + info.host}`, source: info.provider, sourceUrl: info.url, transcript: '' })) } catch (error) { setError((error as Error).message) } finally { setBusy(false) }
   }
-  return <form className="link-collector" onSubmit={(event) => { event.preventDefault(); void save() }}><div className="link-collector-heading"><h2><NavIcon name="link" />收集链接</h2><button className="icon-action" type="button" aria-label="关闭收集" onClick={onClose}><NavIcon name="close" /></button></div><input autoFocus type="url" required aria-label="资源链接" placeholder="粘贴 YouTube、播客或网页链接" value={url} onChange={(event) => { setUrl(event.target.value); setError('') }} /><input aria-label="收集标题" placeholder="标题（可选）" maxLength={160} value={title} onChange={event => setTitle(event.target.value)} /><div className="link-collector-footer"><span className="muted tiny">{info?.provider || (url ? '请检查链接' : '保留原链接')}</span><button type="submit" className="redesign-primary" disabled={!info || busy}><NavIcon name="bookmark" />{busy ? '保存中…' : '收集'}</button></div>{error && <p role="alert">{error}</p>}</form>
+  return <form className="link-collector" onSubmit={(event) => { event.preventDefault(); void save() }}><input autoFocus type="url" required aria-label="资源链接" placeholder="粘贴 YouTube、播客或网页链接" value={url} onChange={(event) => { setUrl(event.target.value); setError('') }} /><input aria-label="收集标题" placeholder="标题（可选）" maxLength={160} value={title} onChange={event => setTitle(event.target.value)} /><div className="link-collector-footer"><span className="muted tiny">{info?.provider || (url ? '请检查链接' : '保留原链接')}</span><button type="submit" className="redesign-primary" disabled={!info || busy}><NavIcon name="collect" />{busy ? '保存中…' : '收集'}</button></div>{error && <p role="alert">{error}</p>}</form>
 }
 
-export function LinkCollection({ initial, items, active, curated = false, onBack, onChange, onCapture, onPractice }: { initial: MediaItem; items: MediaItem[]; active: boolean; curated?: boolean; onBack: () => void; onChange: (item: MediaItem) => void; onCapture: (seed: CaptureSeed) => void; onPractice: (text: string, title: string) => void }) {
+export function LinkCollection({ initial, items, active, curated = false, onChange, onCapture, onPractice }: { initial: MediaItem; items: MediaItem[]; active: boolean; curated?: boolean; onChange: (item: MediaItem) => void; onCapture: (seed: CaptureSeed) => void; onPractice: (text: string, title: string) => void }) {
   const ordered = [initial, ...items.filter(item => item.id !== initial.id)]
   const [current, setCurrent] = useState(initial.id)
   const feed = useRef<HTMLDivElement>(null)
@@ -35,7 +35,7 @@ export function LinkCollection({ initial, items, active, curated = false, onBack
     feed.current.querySelectorAll('[data-link-id]').forEach(node => observer.observe(node))
     return () => observer.disconnect()
   }, [items.length, initial.id])
-  return <div className="link-collection"><header className="link-feed-heading"><button className="redesign-text-button" onClick={onBack}>← {curated ? '精选视频' : '我的收集'}</button><span><NavIcon name="bookmark" />{ordered.length} 份</span></header><div ref={feed} className="link-feed" aria-label="收集资源流">{ordered.map(item => <article key={item.id} data-link-id={item.id} className="link-feed-item"><LinkCard initial={item} active={active && current === item.id} learning={curated} onChange={onChange} onCapture={onCapture} onPractice={onPractice} /></article>)}</div></div>
+  return <div className="link-collection"><div ref={feed} className="link-feed" aria-label="收集资源流">{ordered.map(item => <article key={item.id} data-link-id={item.id} className="link-feed-item"><LinkCard initial={item} active={active && current === item.id} learning={curated} onChange={onChange} onCapture={onCapture} onPractice={onPractice} /></article>)}</div></div>
 }
 
 function LinkCard({ initial, active, learning, onChange, onCapture, onPractice }: { initial: MediaItem; active: boolean; learning: boolean; onChange: (item: MediaItem) => void; onCapture: (seed: CaptureSeed) => void; onPractice: (text: string, title: string) => void }) {

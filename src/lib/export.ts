@@ -1,4 +1,4 @@
-import { listEntries } from '../db/entries'
+import { listEntries, listLegacyEntries } from '../db/entries'
 import { frequencyLabel } from './lexicon'
 import { nowIso } from './normalize'
 import type { Entry, EntryKind, Familiarity } from '../types'
@@ -77,7 +77,7 @@ function formatEntryMarkdown(entry: Entry, index: number): string {
     FAM_LABEL[entry.familiarity],
     entry.category || '其他',
   ]
-  if (entry.enrichment?.phonetic) meta.push(entry.enrichment.phonetic)
+  if (entry.kind === 'word' && entry.enrichment?.phonetic) meta.push(entry.enrichment.phonetic)
   if (entry.enrichment?.frequencyBand) {
     meta.push(frequencyLabel(entry.enrichment.frequencyBand))
   }
@@ -138,6 +138,7 @@ function formatEntryMarkdown(entry: Entry, index: number): string {
     lines.push(`**标签：** ${entry.tags.join(', ')}`)
     lines.push('')
   }
+  if (entry.scene) lines.push(`**场景：** ${entry.scene}`, '')
 
   lines.push(`_收录于 ${new Date(entry.createdAt).toLocaleString('zh-CN')}_`)
   lines.push('')
@@ -175,6 +176,15 @@ export async function exportEntriesJson(): Promise<void> {
   await downloadText(
     `english-clip-${dateStamp()}.json`,
     JSON.stringify(payload, null, 2),
+    'application/json',
+  )
+}
+
+export async function exportLegacyEntriesJson(): Promise<void> {
+  const entries = await listLegacyEntries()
+  await downloadText(
+    `english-clip-legacy-${dateStamp()}.json`,
+    JSON.stringify({ exportedAt: nowIso(), version: 1, entries }, null, 2),
     'application/json',
   )
 }

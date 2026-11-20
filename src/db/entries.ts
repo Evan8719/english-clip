@@ -1,38 +1,56 @@
 import type { Entry, Familiarity } from '../types'
 import { createId, detectKind, nowIso } from '../lib/normalize'
-import { getDb } from './database'
+import { getNotebookId } from '../lib/session'
+import { getDb, getNotebookDb } from './database'
 
-export async function listEntries(): Promise<Entry[]> {
-  const db = await getDb()
-  const all = await db.getAll('entries')
+export async function listEntries(notebook = getNotebookId()): Promise<Entry[]> {
+  const all = await listAllEntriesIncludingDeleted(notebook)
   return all
     .filter((e) => !e.deletedAt)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
-export async function listAllEntriesIncludingDeleted(): Promise<Entry[]> {
+export async function listLegacyEntries(): Promise<Entry[]> {
   const db = await getDb()
   return db.getAll('entries')
 }
 
-export async function getEntry(id: string): Promise<Entry | undefined> {
-  const db = await getDb()
-  const entry = await db.get('entries', id)
+async function listAllEntriesIncludingDeleted(notebook: string): Promise<Entry[]> {
+  const db = await getNotebookDb()
+  const rows = await db.getAllFromIndex('entries', 'by-notebook', notebook)
+  return rows.map(row => row.entry)
+}
+
+export async function getEntry(id: string, notebook = getNotebookId()): Promise<Entry | undefined> {
+  const db = await getNotebookDb()
+  const entry = (await db.get('entries', [notebook, id]))?.entry
   if (!entry || entry.deletedAt) return undefined
   return entry
 }
 
-export async function putEntry(entry: Entry): Promise<Entry> {
-  const db = await getDb()
-  await db.put('entries', entry)
+async function putEntry(entry: Entry, notebook: string): Promise<Entry> {
+  const db = await getNotebookDb()
+  await db.put('entries', { notebook, id: entry.id, entry })
   return entry
 }
 
-export async function upsertEntries(entries: Entry[]): Promise<void> {
-  const db = await getDb()
+export async function mergeRemoteEntries(notebook: string, remote: Entry[]) {
+  const db = await getNotebookDb()
   const tx = db.transaction('entries', 'readwrite')
-  await Promise.all(entries.map((e) => tx.store.put(e)))
+  const local = await tx.store.index('by-notebook').getAll(notebook)
+  const localById = new Map(local.map(row => [row.id, row.entry]))
+  const serverById = new Map(remote.map(entry => [entry.id, entry]))
+  for (const entry of remote) {
+    const existing = localById.get(entry.id)
+    if (!existing || existing.updatedAt <= entry.updatedAt) {
+      await tx.store.put({ notebook, id: entry.id, entry })
+    }
+  }
   await tx.done
+  return local.map(row => row.entry).filter(entry => {
+    const server = serverById.get(entry.id)
+    return !server || entry.updatedAt > server.updatedAt
+  })
 }
 
 export interface CreateEntryInput {
@@ -49,7 +67,7 @@ export interface CreateEntryInput {
   familiarity?: Familiarity
 }
 
-export async function createEntry(input: CreateEntryInput): Promise<Entry> {
+export async function createEntry(input: CreateEntryInput, notebook = getNotebookId()): Promise<Entry> {
   const ts = nowIso()
   const entry: Entry = {
     id: createId(),
@@ -68,7 +86,7 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     updatedAt: ts,
     lastReviewedAt: undefined,
   }
-  return putEntry(entry)
+  return putEntry(entry, notebook)
 }
 
 /** Pick up to `limit` stale cards for casual daily flip (stable within the local day). */
@@ -99,9 +117,15 @@ function hashStr(s: string): number {
 export async function updateEntry(
   id: string,
   patch: Partial<Omit<Entry, 'id' | 'createdAt'>>,
+  notebook = getNotebookId(),
 ): Promise<Entry | undefined> {
-  const existing = await getEntry(id)
-  if (!existing) return undefined
+  const db = await getNotebookDb()
+  const tx = db.transaction('entries', 'readwrite')
+  const existing = (await tx.store.get([notebook, id]))?.entry
+  if (!existing || existing.deletedAt) {
+    await tx.done
+    return undefined
+  }
   const next: Entry = {
     ...existing,
     ...patch,
@@ -109,17 +133,13 @@ export async function updateEntry(
     createdAt: existing.createdAt,
     updatedAt: nowIso(),
   }
-  return putEntry(next)
+  await tx.store.put({ notebook, id, entry: next })
+  await tx.done
+  return next
 }
 
 export async function softDeleteEntry(id: string): Promise<void> {
-  const existing = await getEntry(id)
-  if (!existing) return
-  await putEntry({
-    ...existing,
-    deletedAt: nowIso(),
-    updatedAt: nowIso(),
-  })
+  await updateEntry(id, { deletedAt: nowIso() })
 }
 
 export async function reviewEntry(

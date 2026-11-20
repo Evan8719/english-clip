@@ -1,21 +1,24 @@
+import { usePageNavigation } from '../lib/pageNavigation'
+import { ELLLO_COLLECTION, readStarterPositions, saveStarterPosition, starterMedia, type StarterItem } from '../lib/starterLibrary'
 import { saveLearning, mergeLearning } from '../lib/learningProgress'
 import { MaterialBrowser } from './MaterialBrowser'
-import { defaultMaterialBrowse, type MaterialBrowseState } from '../lib/materialBrowse'
+import { defaultMaterialBrowse, MATERIAL_LIBRARIES, type MaterialBrowseState } from '../lib/materialBrowse'
 import { NavIcon } from './NavIcon'
 import { MaterialStudy } from './MaterialStudy'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getStoredUserId } from '../lib/sync'
 import { getMedia, listMedia, listCollections, patchMedia, processMedia, updateMediaTranscript, uploadMedia } from '../lib/media'
 import type { MediaItem, MaterialCollection } from '../lib/media'
 import { cacheMaterial, readCachedMaterial, estimateLevel, LEVELS } from '../lib/books'
 import { BookReader } from './BookReader'
 import { MaterialImport } from './MaterialImport'
+import { MaterialSheet } from './MaterialSheet'
 import { LinkCollector, LinkCollection } from './LinkCollection'
 import { TimedWords } from './TimedWords'
 import { lookupZhGloss } from '../lib/zhGloss'
 import { authorizedApiFetch } from '../lib/sync'
 
-interface StarterItem { id: string; title: string; titleZh: string; provider: string; sourceUrl: string; audio: string; durationSeconds: number; lines: Array<{ text: string }> }
+
 type Selection = { type: 'starter'; item: StarterItem } | { type: 'mine'; item: MediaItem }
 interface Props {
   active?: boolean
@@ -30,6 +33,8 @@ const stamp = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.fl
 
 export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin, active = true }: Props) {
   const [starter, setStarter] = useState<StarterItem[]>([])
+  const [starterPositions, setStarterPositions] = useState<Awaited<ReturnType<typeof readStarterPositions>>>({})
+  const playbackIntent = useRef(false)
   const [mine, setMine] = useState<MediaItem[]>([])
   const [loggedIn, setLoggedIn] = useState(Boolean(getStoredUserId()))
   const [selected, setSelected] = useState<Selection | null>(null)
@@ -38,7 +43,24 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   const [answerOpen, setAnswerOpen] = useState(false)
   const [collections, setCollections] = useState<MaterialCollection[]>([])
   const [browse, setBrowse] = useState<MaterialBrowseState>(() => { try { return { ...defaultMaterialBrowse, ...JSON.parse(sessionStorage.getItem('ec.material-browse:' + getStoredUserId()) || '{}') } } catch { return defaultMaterialBrowse } })
-  function setBrowseState(value: MaterialBrowseState) { setBrowse(value); try { sessionStorage.setItem('ec.material-browse:' + getStoredUserId(), JSON.stringify(value)) } catch { /* optional session restoration */ } }
+  const route = selected ? `item:${selected.item.id}` : browse.collectionId ? `collection:${browse.collectionId}` : `library:${browse.library}`
+  const scrollPositions = useRef(new Map<string, number>())
+  const restoredRoute = useRef('')
+  function rememberScroll() {
+    const position = document.querySelector('.redesign-workspace')?.scrollTop
+    if (active && position !== undefined) scrollPositions.current.set(route, position)
+  }
+  function setBrowseState(value: MaterialBrowseState) {
+    if (browse.collectionId !== value.collectionId || browse.library !== value.library) rememberScroll()
+    setBrowse(value)
+    try { sessionStorage.setItem('ec.material-browse:' + getStoredUserId(), JSON.stringify(value)) } catch { /* optional session restoration */ }
+  }
+  useLayoutEffect(() => {
+    if (!active || restoredRoute.current === route) return
+    const workspace = document.querySelector('.redesign-workspace')
+    if (workspace) workspace.scrollTop = scrollPositions.current.get(route) || 0
+    restoredRoute.current = route
+  }, [active, route])
   const [loading, setLoading] = useState(false)
   const reloadTask = useRef<Promise<void> | null>(null)
   const [batchOpen, setBatchOpen] = useState(false)
@@ -59,6 +81,8 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   const [time, setTime] = useState(0)
   const [dockHeight, setDockHeight] = useState(0)
   const playerDock = useRef<HTMLDivElement>(null)
+  const mediaTop = useRef<HTMLDivElement>(null)
+  const transcriptHeading = useRef<HTMLDivElement>(null)
   const player = useRef<HTMLMediaElement>(null)
   useEffect(() => { if (!active) player.current?.pause(); else void reloadMine() }, [active])
   const selectToken = useRef(0)
@@ -90,17 +114,26 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
     try { await task } finally { reloadTask.current = null }
   }
   useEffect(() => {
+    void readStarterPositions().then(setStarterPositions)
     void fetch(`${packBase}catalog.json`).then((response) => response.json()).then((data: { items: StarterItem[] }) => setStarter(data.items)).catch(() => setStarter([]))
 
   }, [])
   useEffect(() => {
     if (selected?.type !== 'mine' || (!['processing', 'queued-local', 'transcribing-local'].includes(selected.item.status) && selected.item.guideStatus !== 'processing')) return
-    const timer = window.setInterval(() => { void getMedia(selected.item.id).then((item) => { setSelected({ type: 'mine', item }); if (item.status !== 'processing') void reloadMine() }).catch(() => undefined) }, 4000)
-    return () => window.clearInterval(timer)
+    let active = true
+    const timer = window.setInterval(() => {
+      void getMedia(selected.item.id).then(item => {
+        if (!active) return
+        setSelected(current => current?.type === 'mine' && current.item.id === item.id ? { type: 'mine', item } : current)
+        if (item.status !== 'processing') void reloadMine()
+      }).catch(() => undefined)
+    }, 4000)
+    return () => { active = false; window.clearInterval(timer) }
   }, [selected])
 
   useEffect(() => {
     if (!initialOrigin) return
+    if (initialOrigin.materialId.startsWith('elllo-')) { const item = starter.find(item => item.id === initialOrigin.materialId); if (item) setSelected({ type: 'starter', item }); return }
     const token = ++selectToken.current
     void getMedia(initialOrigin.materialId).catch(() => readCachedMaterial<MediaItem>(initialOrigin.materialId)).then(async item => item ? await mergeLearning(item) : null).then((item) => {
       if (token !== selectToken.current || !item) return
@@ -108,8 +141,20 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
       else if (initialOrigin.timestamp !== undefined) item = { ...item, playbackPosition: initialOrigin.timestamp }
       setSelected({ type: 'mine', item })
     })
-  }, [initialOrigin])
+  }, [initialOrigin, starter])
   const current = selected?.item
+  const activeTitle = selected?.type === 'starter' ? selected.item.titleZh : selected?.item.title || '素材'
+  const organization = selected?.type === 'starter' ? starterMedia(selected.item).organization : selected?.item.organization
+  const itemLibrary = organization?.library || (selected?.type === 'mine' && ['book', 'link', 'lesson'].includes(selected.item.kind) ? selected.item.kind : 'audio')
+  const libraryLabel = MATERIAL_LIBRARIES.find(([key]) => key === itemLibrary)?.[1] || '听力'
+  const programme = organization?.collectionTitle
+  const linkedProgramme = programme && organization?.collectionId && itemLibrary !== 'book' ? programme : ''
+  usePageNavigation({
+    title: activeTitle,
+    path: selected ? ['素材', libraryLabel, ...(linkedProgramme ? [linkedProgramme] : []), activeTitle] : ['素材'],
+    onBack: selected ? () => goToLibrary(itemLibrary, linkedProgramme ? organization?.collectionId : '') : undefined,
+    onAncestor: selected ? index => goToLibrary(index === 0 ? 'all' : itemLibrary, index === 2 ? organization?.collectionId : '') : undefined,
+  }, 'materials', Boolean(selected), 30)
   const lines = useMemo(() => selected?.type === 'starter' ? selected.item.lines.map((line) => line.text) : selected?.item.segments?.length ? selected.item.segments.map((line) => line.text) : selected?.item.transcript.split(/(?<=[.!?])\s+|\n+/).map((line) => line.trim()).filter(Boolean) || [], [selected])
   const selectedText = lines[lineIndex] || lines[0] || ''
   useEffect(() => { wordLookup.current++; setWord(''); setWordMeaning('') }, [selectedText])
@@ -129,6 +174,8 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
     return () => observer.disconnect()
   }, [selected?.item.id, streamUrl])
   function choose(next: Selection | null) {
+    rememberScroll()
+    playbackIntent.current = Boolean(next && (next.type === 'starter' || next.item.kind === 'audio' || next.item.kind === 'video'))
     const token = ++selectToken.current
     setLineIndex(0); setExerciseIndex(0); setAnswerOpen(false); setLoop(false); setPointA(null); setPointB(null); setTime(0)
     if (next?.type === 'mine') {
@@ -139,6 +186,19 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
         void cacheMaterial(item.id, item); setSelected({ type: 'mine', item }); setMessage('')
       }).catch((error: Error) => setMessage(error.message))
     } else setSelected(next)
+  }
+
+  function goToLibrary(library: string, collectionId = '') {
+    choose(null)
+    if (selected?.type === 'mine' && selected.item.kind === 'book') void reloadMine()
+    const currentLibrary = browse.library === 'all' ? 'audio' : browse.library
+    if (currentLibrary === library && browse.collectionId === collectionId) return
+    setBrowseState({ ...defaultMaterialBrowse, library, collectionId, sort: browse.sort })
+  }
+
+  function jumpToSection(section: HTMLDivElement | null) {
+    section?.focus({ preventScroll: true })
+    section?.scrollIntoView({ block: 'start' })
   }
 
   async function submitUpload() {
@@ -153,34 +213,34 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
   }
   function onTimeUpdate() { const node = player.current; if (!node) return; if (loop && pointA !== null && pointB !== null && node.currentTime >= pointB) node.currentTime = pointA; setTime(node.currentTime); if (selected?.type === 'mine' && selected.item.segments?.length) { const index = selected.item.segments.findIndex((part) => node.currentTime >= part.start && node.currentTime < part.end); if (index >= 0) setLineIndex(index) } if (Date.now() - lastPositionSave.current > 15000) { lastPositionSave.current = Date.now(); savePlayback() } }
   function seekTo(seconds: number) { if (player.current) { player.current.currentTime = seconds; setTime(seconds); void player.current.play().catch(() => undefined) } }
-  function savePlayback() { if (selected?.type === 'mine' && player.current) void saveLearning(selected.item, { playbackPosition: player.current.currentTime }).catch(() => undefined) }
-  function resumePlayback() { if (selected?.type === 'mine' && player.current && selected.item.playbackPosition && selected.item.playbackPosition < player.current.duration) player.current.currentTime = selected.item.playbackPosition }
+  function savePlayback() { if (!selected || !player.current) return; const position = player.current.currentTime; if (selected.type === 'mine') { void saveLearning(selected.item, { playbackPosition: position }).catch(() => undefined); setMine(list => list.map(item => item.id === selected.item.id ? { ...item, playbackPosition: position, lastStudiedAt: new Date().toISOString() } : item)) } else { void saveStarterPosition(selected.item.id, position).then(saved => setStarterPositions(previous => ({ ...previous, [selected.item.id]: saved }))) } }
 
-  if (selected?.type === 'mine' && selected.item.kind === 'book') return <BookReader item={selected.item} onBack={() => { choose(null); void reloadMine() }} onCapture={onCapture} onPractice={onPractice} onSettings={onSettings} />
+  function resumePlayback() { const node = player.current; if (!selected || !node) return; const position = selected.type === 'mine' ? selected.item.playbackPosition : starterPositions[selected.item.id]?.playbackPosition; if (position && position < node.duration) node.currentTime = position; if (selected.type === 'mine' && Number.isFinite(node.duration)) { const item = { ...selected.item, durationSeconds: node.duration }; void cacheMaterial(item.id, item); setMine(list => list.map(value => value.id === item.id ? { ...value, durationSeconds: node.duration } : value)) } if (playbackIntent.current) { playbackIntent.current = false; void node.play().catch(() => setMessage('点击播放器的播放键即可继续收听。')) } }
 
-  if (selected?.type === 'mine' && ['link', 'lesson'].includes(selected.item.kind)) return <LinkCollection key={selected.item.id} initial={selected.item} items={mine.filter(item => item.kind === selected.item.kind && item.organization?.collectionId === selected.item.organization?.collectionId)} curated={selected.item.kind === 'lesson'} active={active} onBack={() => { choose(null); void reloadMine() }} onChange={item => setMine(list => list.map(old => old.id === item.id ? item : old))} onCapture={onCapture} onPractice={onPractice} />
+
+  if (selected?.type === 'mine' && selected.item.kind === 'book') return <BookReader key={selected.item.id} item={selected.item} onCapture={onCapture} onPractice={onPractice} />
+
+  if (selected?.type === 'mine' && ['link', 'lesson'].includes(selected.item.kind)) return <LinkCollection key={selected.item.id} initial={selected.item} items={mine.filter(item => item.kind === selected.item.kind && item.organization?.collectionId === selected.item.organization?.collectionId)} curated={selected.item.kind === 'lesson'} active={active} onChange={item => setMine(list => list.map(old => old.id === item.id ? item : old))} onCapture={onCapture} onPractice={onPractice} />
 
   return <div className="redesign-page media-page">
-    {!selected && <header className="redesign-heading"><div><h1>素材</h1><p>听一段，记一句，再试着说出来。</p></div><div className="material-header-actions"><button className="icon-action collection-entry" aria-label="收集链接" title="收集链接" onClick={() => { if (loggedIn) setCollectOpen(value => !value); else onSettings() }}><NavIcon name="link" /></button><button className="redesign-primary" onClick={() => { if (!loggedIn) { setMessage('先在设置中登录 NAS 账号，再上传私人素材。'); onSettings() } else setBatchOpen(true) }}><NavIcon name="plus" />导入</button></div></header>}
+    {!selected && !browse.collectionId && <header className="redesign-heading"><div><h1>素材</h1></div><div className="material-header-actions"><button className="redesign-secondary collection-entry" onClick={() => { if (loggedIn) setCollectOpen(true); else onSettings() }}><NavIcon name="collect" />收集链接</button><button className="redesign-primary" onClick={() => { if (!loggedIn) { setMessage('先在设置中登录 NAS 账号，再上传私人素材。'); onSettings() } else setBatchOpen(true) }}><NavIcon name="plus" />导入</button></div></header>}
     {message && <p className="redesign-message" role="status">{message}</p>}
     {!selected ? <div className="media-library">
-      {collectOpen && <LinkCollector onClose={() => setCollectOpen(false)} onDone={item => { setCollectOpen(false); void reloadMine(); choose({ type: 'mine', item }) }} />}
+      {collectOpen && <MaterialSheet title="收集链接" onClose={() => setCollectOpen(false)}><LinkCollector onDone={item => { setCollectOpen(false); setMine(items => [...items.filter(old => old.id !== item.id), item]); goToLibrary('link'); void reloadMine() }} /></MaterialSheet>}
       {batchOpen && <button className="redesign-text-button" onClick={() => { setBatchOpen(false); setUploadOpen(true) }}>添加文字 / 单个文件</button>}
       {batchOpen && <MaterialImport collections={collections} onCollectionsChanged={() => void reloadMine()} onClose={() => setBatchOpen(false)} onDone={() => void reloadMine()} />}
       {loading && mine.length === 0 && <p role="status">正在读取素材列表…</p>}
-      <MaterialBrowser items={mine} collections={collections} state={browse} onState={setBrowseState} onOpen={item => choose({ type: 'mine', item })} loading={loading} onRefresh={() => void reloadMine()} />
-      <details className="library-starters"><summary>内置听说素材 · ELLLO {starter.length} 段</summary><div className="library-grid">
-      {starter.filter(() => !browse.level || browse.level === 'A2').filter((item) => `${item.title} ${item.titleZh}`.toLowerCase().includes(browse.query.toLowerCase())).map((item) => <button type="button" className="media-list-row" key={item.id} onClick={() => choose({ type: 'starter', item })}><span className="media-symbol"><NavIcon name="audio" /></span><span><strong>{item.titleZh}</strong><span className="level-badge">A2 · 来源参考</span><small>{item.title} · {stamp(item.durationSeconds)}</small></span><span className="media-arrow">›</span></button>)}
-      </div><p className="muted tiny">内置素材保留原课来源，用于教育学习与非商业使用。</p></details>
+      <MaterialBrowser items={[...mine, ...starter.map(item => starterMedia(item, starterPositions[item.id]))]} collections={[...collections, ...(starter.length ? [ELLLO_COLLECTION] : [])]} state={browse} onState={setBrowseState} onOpen={item => { const builtIn = starter.find(value => value.id === item.id); choose(builtIn ? { type: 'starter', item: builtIn } : { type: 'mine', item }) }} loading={loading} onRefresh={() => void reloadMine()} />
       <details className="material-help"><summary>播放与转写说明</summary><p>手机可上传和发起任务；电脑转写需电脑助手在线。云端转写需设置转写密钥。已有时间字幕可点句定位。移动网络首次播放受 NAS 上行和线路影响。</p></details><p className="muted tiny">等级为文本估算或来源参考，可在素材内调整。</p>
-    </div> : <div className="media-reader" style={{ '--media-player-height': `${dockHeight}px` } as React.CSSProperties}>
-      <button className="redesign-text-button" onClick={() => choose(null)}>← 返回素材库</button>
-      <div className="media-reader-head"><div><span className="redesign-tag">{selected.type === 'starter' ? '内置素材' : '我的素材'}</span><h2>{selected.type === 'starter' ? selected.item.titleZh : selected.item.title}</h2><p>{selected.type === 'starter' ? selected.item.provider : selected.item.source || '私人素材'}</p></div>{selected.type === 'starter' && <a href={selected.item.sourceUrl} target="_blank" rel="noreferrer">查看原课 ↗</a>}</div>
+    </div> : <div ref={mediaTop} className="media-reader" tabIndex={-1} style={{ '--media-player-height': `${dockHeight}px` } as React.CSSProperties}>
+
+      <div className="media-reader-head"><div><span className="redesign-tag">{selected.type === 'starter' ? '内置素材' : '我的素材'}</span><h2>{activeTitle}</h2><p>{selected.type === 'starter' ? selected.item.provider : selected.item.source || '私人素材'}</p></div>{selected.type === 'starter' && <a href={selected.item.sourceUrl} target="_blank" rel="noreferrer">查看原课 ↗</a>}</div>
+      {streamUrl && <nav className="media-section-nav" aria-label="素材内导航"><button className="redesign-secondary" onClick={() => jumpToSection(mediaTop.current)}><NavIcon name="play" />播放器</button><button className="redesign-secondary" onClick={() => jumpToSection(transcriptHeading.current)}><NavIcon name="note" />原文</button></nav>}
       <label className="material-level-edit">素材等级 <select value={selected.type === 'mine' ? selected.item.level || '' : 'A2'} disabled={selected.type === 'starter'} onChange={(event) => { if (selected.type === 'mine') void patchMedia(selected.item.id, { level: event.target.value }).then((item) => { setSelected({ type: 'mine', item }); void reloadMine() }).catch((error: Error) => setMessage(error.message)) }}><option value="">待评估</option>{LEVELS.map((l) => <option key={l}>{l}</option>)}</select> <small>参考等级，可按实际体验调整</small></label>
       {streamUrl && <div ref={playerDock} className="media-player-dock" role="region" aria-label="固定播放区">{kind === 'video' ? <video key={selected.item.id} ref={player as React.RefObject<HTMLVideoElement>} className="media-video" controls playsInline preload="metadata" src={streamUrl} onTimeUpdate={onTimeUpdate} onPause={savePlayback} onLoadedMetadata={resumePlayback} /> : <audio key={selected.item.id} ref={player as React.RefObject<HTMLAudioElement>} className="media-audio" controls preload="metadata" src={streamUrl} onTimeUpdate={onTimeUpdate} onPause={savePlayback} onLoadedMetadata={resumePlayback} />}</div>}
       <div className="media-reader-layout"><div>
         {streamUrl && <div className="media-loop"><span>播放位置 {stamp(time)}</span><button onClick={() => setPointA(player.current?.currentTime ?? 0)}>A 点 {pointA === null ? '' : stamp(pointA)}</button><button onClick={() => setPointB(player.current?.currentTime ?? 0)}>B 点 {pointB === null ? '' : stamp(pointB)}</button><button className={loop ? 'active' : ''} disabled={pointA === null || pointB === null || pointB <= pointA} onClick={() => setLoop(!loop)}>{loop ? '停止循环' : '区间循环'}</button><select aria-label="播放速度" defaultValue="1" onChange={(event) => { if (player.current) player.current.playbackRate = Number(event.target.value) }}><option value="0.75">0.75×</option><option value="1">1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select></div>}
-<section className="media-karaoke" aria-label="逐词跟读"><p className="media-selected-text media-word-line">{selectedText ? <TimedWords text={selectedText} words={selected.type === 'mine' ? selected.item.segments?.[lineIndex]?.words : undefined} time={time} selected={word} onWord={value => void pickWord(value)} /> : '选择原文中的一句，开始跟读或记录。'}</p>{word && <div className="link-word-meaning"><strong>{word}</strong><span>{wordMeaning}</span><button className="icon-action" aria-label="记录这个单词" onClick={() => onCapture({ text: word, context: selectedText, category: kind === 'video' ? '影视剧' : '播客', source: current?.title, origin: selected.type === 'mine' ? { materialId: selected.item.id, timestamp: selected.item.segments?.[lineIndex]?.start } : undefined })}><NavIcon name="bookmark" /></button></div>}<div className="link-learning-actions"><button className="icon-action" aria-label="重听当前句" title="重听当前句" disabled={!selectedText} onClick={() => { if (selected.type === 'mine' && selected.item.segments?.[lineIndex]) seekTo(selected.item.segments[lineIndex].start) }}><NavIcon name="review" /></button><button className="icon-action" aria-label="下一句听力" title="下一句" disabled={lineIndex >= lines.length - 1} onClick={() => { const next = Math.min(lines.length - 1, lineIndex + 1); setLineIndex(next); if (selected.type === 'mine' && selected.item.segments?.[next]) seekTo(selected.item.segments[next].start) }}><NavIcon name="next" /></button><button className="icon-action" aria-label="用当前句开口练" title="开口练" disabled={!selectedText} onClick={() => onPractice(selectedText, current?.title || '')}><NavIcon name="mic" /></button></div></section>
+<section className="media-karaoke" aria-label="逐词跟读"><p className="media-selected-text media-word-line">{selectedText ? <TimedWords text={selectedText} words={selected.type === 'mine' ? selected.item.segments?.[lineIndex]?.words : undefined} time={time} selected={word} onWord={value => void pickWord(value)} /> : '选择原文中的一句，开始跟读或记录。'}</p>{word && <div className="link-word-meaning"><strong>{word}</strong><span>{wordMeaning}</span><button className="icon-action" aria-label="记录这个单词" onClick={() => onCapture({ text: word, context: selectedText, category: kind === 'video' ? '影视剧' : '播客', source: current?.title, origin: { materialId: selected.item.id, timestamp: selected.type === 'mine' ? selected.item.segments?.[lineIndex]?.start : undefined } })}><NavIcon name="bookmark" /></button></div>}<div className="link-learning-actions"><button className="icon-action" aria-label="重听当前句" title="重听当前句" disabled={!selectedText} onClick={() => { if (selected.type === 'mine' && selected.item.segments?.[lineIndex]) seekTo(selected.item.segments[lineIndex].start) }}><NavIcon name="review" /></button><button className="icon-action" aria-label="下一句听力" title="下一句" disabled={lineIndex >= lines.length - 1} onClick={() => { const next = Math.min(lines.length - 1, lineIndex + 1); setLineIndex(next); if (selected.type === 'mine' && selected.item.segments?.[next]) seekTo(selected.item.segments[next].start) }}><NavIcon name="next" /></button><button className="icon-action" aria-label="用当前句开口练" title="开口练" disabled={!selectedText} onClick={() => onPractice(selectedText, current?.title || '')}><NavIcon name="mic" /></button></div></section>
         {selected.type === 'mine' && ['queued-local', 'transcribing-local'].includes(selected.item.status) && <p className="redesign-message">{selected.item.status === 'queued-local' ? '手机可以提交任务；识别由运行转写助手的电脑完成，电脑关闭时等待。' : '电脑正在转写，完成后自动更新原文和练习。'}</p>}
         {selected.type === 'mine' && selected.item.status === 'failed' && <p className="redesign-message">{selected.item.error}</p>}
         {selected.type === 'mine' && !selected.item.courseId && !['processing', 'queued-local', 'transcribing-local'].includes(selected.item.status) && <button className="redesign-secondary" onClick={() => { void processMedia(selected.item.id).then((item) => { setSelected({ type: 'mine', item }); setMessage('正在生成练习…') }).catch((error: Error) => setMessage(error.message)) }}>重建练习卡（无原文时云端转写）</button>}
@@ -188,7 +248,7 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
         {selected.type === 'mine' && !selected.item.courseId && <button className="redesign-secondary" disabled={['processing', 'queued-local', 'transcribing-local'].includes(selected.item.status)} onClick={() => { void authorizedApiFetch(`/api/media/${selected.item.id}/local`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(async (res) => { const data = await res.json(); if (!res.ok) throw Error(data.message); setSelected({ type: 'mine', item: data.item }); setMessage('已加入本机队列。请在电脑上启动本地转写助手；电脑离线时任务会等待。') }).catch((error: Error) => setMessage(error.message)) }}>交给电脑转写</button>}
         {selected.type === 'mine' && selected.item.courseId && <label className="course-choose">切换集数<select aria-label="选择课程集数" value={selected.item.id} onChange={(event) => { const item = mine.find((entry) => entry.id === event.target.value); if (item) choose({ type: 'mine', item }) }}>{mine.filter((entry) => entry.courseId === selected.item.courseId).sort((a, b) => (a.episode || 0) - (b.episode || 0)).map((entry) => <option key={entry.id} value={entry.id}>第 {entry.episode} 集 · {entry.title}</option>)}</select></label>}
         {selected.type === 'mine' && <button className="redesign-text-button media-study-jump" onClick={() => document.querySelector('.material-study')?.scrollIntoView({ block: 'start', behavior: 'smooth' })}>重点 / 笔记 / 理解练习 ↓</button>}
-        <div className="media-section-head"><h3>原文</h3><span>{lines.length} 段</span>{selected.type === 'mine' && Boolean(selected.item.segments?.length) && <button className="redesign-text-button" onClick={() => document.querySelector('.media-transcript .playing')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>定位当前句</button>}</div>
+        <div ref={transcriptHeading} className="media-section-head" tabIndex={-1}><h3>原文</h3><span>{lines.length} 段</span>{selected.type === 'mine' && Boolean(selected.item.segments?.length) && <button className="redesign-text-button" onClick={() => document.querySelector('.media-transcript .playing')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>定位当前句</button>}</div>
         {selected.type === 'mine' && streamUrl && !selected.item.segments?.length && <p className="muted tiny">当前原文没有时间轴。点击「本机转写」后，可生成逐句定位字幕。</p>}
         {selected.type === 'mine' && selected.item.segments?.[lineIndex] && <button className="redesign-secondary" onClick={() => { const part = selected.item.segments![lineIndex]; setPointA(part.start); setPointB(part.end); setLoop(true); if (player.current) { player.current.currentTime = part.start; void player.current.play().catch(() => undefined) } }}>循环这一句</button>}
         <div className="media-transcript" role="region" aria-label="逐句原文" tabIndex={0}>{lines.length ? lines.map((line, index) => {
@@ -197,12 +257,29 @@ export function MaterialsView({ onCapture, onPractice, onSettings, initialOrigin
           return <button key={`${index}-${line.slice(0, 8)}`} aria-current={active ? 'true' : undefined} className={`${lineIndex === index ? 'transcript-row selected' : 'transcript-row'}${active ? ' playing' : ''}`} onClick={() => { setLineIndex(index); if (part && player.current) { player.current.currentTime = part.start; void player.current.play().catch(() => undefined) } }}><span className="transcript-time">{part ? stamp(part.start) : String(index + 1).padStart(2, '0')}</span><span className="transcript-text">{line}</span></button>
         }) : <p className="media-empty">{selected.type === 'mine' && selected.item.status === 'processing' ? '正在生成原文，请稍候。' : '暂无原文。可上传同名 SRT/VTT，或交给电脑生成时间字幕。'}</p>}</div>
         {selected.type === 'mine' && <details className="media-transcript-editor"><summary>修改 / 补充原文</summary><textarea defaultValue={selected.item.transcript} id="media-transcript-edit" rows={8} /><button className="redesign-secondary" onClick={() => { const value = (document.getElementById('media-transcript-edit') as HTMLTextAreaElement).value; void updateMediaTranscript(selected.item.id, value).then((item) => { setSelected({ type: 'mine', item }); void reloadMine(); setMessage('原文和练习已更新。') }).catch((error: Error) => setMessage(error.message)) }}>保存原文并更新练习</button></details>}
-      </div><aside className="media-practice-side"><p className="redesign-eyebrow">选中的一句</p><div className="media-side-actions"><button className="redesign-primary" disabled={!selectedText} onClick={() => onCapture({ text: selectedText, context: selectedText, category: selected.type === 'starter' ? '播客' : kind === 'video' ? '影视剧' : '播客', source: current?.title, origin: selected.type === 'mine' ? { materialId: selected.item.id, timestamp: selected.item.segments?.[lineIndex]?.start } : undefined, sourceDetail: selected.type === 'starter' ? selected.item.title : selected.item.segments?.[lineIndex] ? stamp(selected.item.segments[lineIndex].start) : undefined })}>＋ 收藏词句</button><button className="redesign-secondary" disabled={!selectedText} onClick={() => onPractice(selectedText, current?.title || '')}>跟读这句</button></div>
+      </div><aside className="media-practice-side"><p className="redesign-eyebrow">选中的一句</p><div className="media-side-actions"><button className="redesign-primary" disabled={!selectedText} onClick={() => onCapture({ text: selectedText, context: selectedText, category: selected.type === 'starter' ? '播客' : kind === 'video' ? '影视剧' : '播客', source: current?.title, origin: { materialId: selected.item.id, timestamp: selected.type === 'mine' ? selected.item.segments?.[lineIndex]?.start : undefined }, sourceDetail: selected.type === 'starter' ? selected.item.title : selected.item.segments?.[lineIndex] ? stamp(selected.item.segments[lineIndex].start) : undefined })}>＋ 收藏词句</button><button className="redesign-secondary" disabled={!selectedText} onClick={() => onPractice(selectedText, current?.title || '')}>跟读这句</button></div>
         {selected.type === 'mine' && <MaterialStudy key={selected.item.id} item={selected.item} quote={selectedText} time={selected.item.segments?.[lineIndex]?.start ?? time} onChange={(item) => { setSelected((current) => current?.type === 'mine' && current.item.id === item.id ? { type: 'mine', item } : current); setMine((list) => list.map((old) => old.id === item.id ? item : old)) }} onSeek={seekTo} onPractice={onPractice} />}
         <div className="media-section-head"><h3>练习卡</h3><span>{exercises.length} 张</span></div>
         {exercise ? <div className="media-exercise"><span className="redesign-tag">{exercise.kind === 'listen' ? '听写填空' : exercise.kind === 'shadow' ? '跟读' : '复述'}</span><p>{exercise.prompt}</p>{answerOpen && <p className="media-answer">{exercise.answer || exercise.reference}</p>}<div><button onClick={() => setAnswerOpen(!answerOpen)}>{answerOpen ? '收起参考' : '查看参考'}</button><button onClick={() => { setExerciseIndex((exerciseIndex + 1) % exercises.length); setAnswerOpen(false) }}>下一张 →</button></div></div> : <p className="media-empty">添加原文后会自动生成练习卡。</p>}
       </aside></div>
     </div>}
-    {uploadOpen && <div className="redesign-overlay" onClick={() => setUploadOpen(false)}><div className="redesign-sheet" role="dialog" aria-modal="true" aria-label="导入素材" onClick={(event) => event.stopPropagation()}><div className="redesign-sheet-head"><h2>导入练习素材</h2><button onClick={() => setUploadOpen(false)} aria-label="关闭">✕</button></div><label>归属<select aria-label="导入素材归属" value={uploadCollection} onChange={e => setUploadCollection(e.target.value)}><option value="">自动归类</option>{collections.filter(c => !['link','lesson'].includes(c.library)).map(c => <option key={c.id} value={c.id}>{c.category} / {c.title}</option>)}</select></label><button className="redesign-text-button" onClick={() => { setUploadOpen(false); setBatchOpen(true) }}>新建分组 / 批量导入</button><label>标题<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：周末出行对话" /></label><label>音频或视频（可选）<input type="file" accept="audio/*,video/mp4,video/quicktime,.mp3,.m4a,.wav,.webm,.ogg,.mp4,.mov" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label><label>来源（可选）<input value={source} onChange={(event) => setSource(event.target.value)} placeholder="例如：自己的课程录音" /></label><label>原文（可选；有原文可立即生成练习）<textarea rows={6} value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="粘贴逐句原文；没有原文时可用 AI 转写" /></label><p className="muted tiny">文件保存在 NAS。无文稿时默认等待电脑本机转写；配置 DeepSeek 后，原文会用于整理本篇重点和理解练习。</p><button className="redesign-primary" disabled={busy || !title.trim() || (!file && !transcript.trim())} onClick={() => void submitUpload()}>{busy ? '正在上传…' : '保存并生成练习'}</button></div></div>}
+    {uploadOpen && <MaterialSheet title="导入练习素材" busy={busy} onClose={() => setUploadOpen(false)}>
+      <div className="home-adjust single-material-form">
+        <label>归属<select aria-label="导入素材归属" value={uploadCollection} disabled={busy} onChange={e => setUploadCollection(e.target.value)}>
+          <option value="">自动归类</option>
+          {collections.filter(c => !['link','lesson'].includes(c.library)).map(c => <option key={c.id} value={c.id}>{c.category} / {c.title}</option>)}
+        </select></label>
+        <button className="redesign-text-button" disabled={busy} onClick={() => { setUploadOpen(false); setBatchOpen(true) }}>新建分组 / 批量导入</button>
+        <label>标题<input value={title} disabled={busy} onChange={event => setTitle(event.target.value)} placeholder="例如：周末出行对话" /></label>
+        <label>音频或视频（可选）<input type="file" disabled={busy} accept="audio/*,video/mp4,video/quicktime,.mp3,.m4a,.wav,.webm,.ogg,.mp4,.mov" onChange={event => setFile(event.target.files?.[0] || null)} />
+          {file && <small className="muted">{file.name}</small>}
+        </label>
+        <label>来源（可选）<input value={source} disabled={busy} onChange={event => setSource(event.target.value)} placeholder="例如：自己的课程录音" /></label>
+        <label>原文（可选）<textarea rows={6} value={transcript} disabled={busy} onChange={event => setTranscript(event.target.value)} placeholder="粘贴原文后可生成练习" /></label>
+        <p className="muted tiny">文件保存在 NAS。没有原文时会等待电脑本机转写。</p>
+        {message && <p role="status">{message}</p>}
+      </div>
+      <div className="app-sheet-footer"><button className="redesign-primary" disabled={busy || !title.trim() || (!file && !transcript.trim())} onClick={() => void submitUpload()}>{busy ? '正在上传…' : '保存并生成练习'}</button></div>
+    </MaterialSheet>}
   </div>
 }

@@ -1,7 +1,7 @@
 import { createMediaCovers } from './media-covers.mjs'
 import { createMaterialTaxonomy } from './material-taxonomy.mjs'
 import { createProgressStore } from './media-progress.mjs'
-import { streamConversation, explainExpression, assistantConfig, testAssistant, listAssistantModels } from './deepseek.mjs'
+import { streamConversation, explainExpression, suggestExpressionScenes, assistantConfig, testAssistant, listAssistantModels } from './deepseek.mjs'
 import { connectionMode } from './ai-network.mjs'
 import { createDailyLearningApi } from './daily-learning.mjs'
 import { AI_PRESETS, normalizeAiSettings, normalizeApiKey } from './ai-config.mjs'
@@ -283,28 +283,35 @@ export function createMediaApi({ dataDir, secret, sendJson, libraryDir = join(da
       preferences[user.id] = { ...preferences[user.id], provider: body.provider }; atomicJson(preferencesFile, preferences)
       return sendJson(res, 200, { ok: true, provider: body.provider })
     }
-    if (path === '/api/ai/explain' && req.method === 'POST') {
+    if (['/api/ai/explain', '/api/ai/scenes'].includes(path) && req.method === 'POST') {
       if (!user) return reject(res, 401, '未登录')
       const provider = providerFor(user.id), apiKey = readKey(user.id, provider)
       if (!apiKey) return reject(res, 409, '请先在设置中配置所选 AI 服务')
       const body = await readBody(req)
-      const input = { text: String(body.text || '').trim().slice(0, 2000), context: String(body.context || '').trim().slice(0, 3500), source: String(body.source || '').slice(0, 180) }
+      const classify = path === '/api/ai/scenes'
+      const text = String(body.text || '').trim().slice(0, 2000)
+      const context = String(body.context || '').trim().slice(0, 3500)
+      const input = classify
+        ? { text, context, existing: (Array.isArray(body.existing) ? body.existing : []).filter(label => typeof label === 'string').slice(0, 30).map(label => label.slice(0, 24)) }
+        : { text, context, source: String(body.source || '').slice(0, 180) }
       if (!input.text) return reject(res, 400, '请输入英文表达')
       const settings = configFor(user.id, provider)
-      const fingerprint = createHash('sha256').update(JSON.stringify({ uid: user.id, provider, settings, ...input })).digest('hex')
+      const responseField = classify ? 'scenes' : 'explanation'
+      const fingerprint = createHash('sha256').update(JSON.stringify({ path, uid: user.id, provider, settings, ...input })).digest('hex')
       const cached = explanationCache.get(fingerprint)
-      if (cached && cached.until > Date.now()) return sendJson(res, 200, { ok: true, explanation: cached.value, cached: true })
+      if (cached && cached.until > Date.now()) return sendJson(res, 200, { ok: true, [responseField]: cached.value, cached: true })
       const limit = explanationLimits.get(user.id)
-      if (limit && limit.until > Date.now() && limit.count >= 40) return reject(res, 429, '释义请求较多，请稍候再试')
+      if (limit && limit.until > Date.now() && limit.count >= 40) return reject(res, 429, 'AI 请求较多，请稍候再试')
       explanationLimits.set(user.id, limit && limit.until > Date.now() ? { ...limit, count: limit.count + 1 } : { until: Date.now() + 60000, count: 1 })
       const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 35000)
       const close = () => { if (!res.writableEnded) controller.abort() }
       res.on('close', close)
       try {
-        const value = await explainExpression({ apiKey, provider, settings, body: input, signal: controller.signal })
+        const generate = classify ? suggestExpressionScenes : explainExpression
+        const value = await generate({ apiKey, provider, settings, body: input, signal: controller.signal })
         if (explanationCache.size >= 200) explanationCache.delete(explanationCache.keys().next().value)
         explanationCache.set(fingerprint, { until: Date.now() + 86400000, value })
-        if (!res.destroyed) sendJson(res, 200, { ok: true, explanation: value })
+        if (!res.destroyed) sendJson(res, 200, { ok: true, [responseField]: value })
       } finally { clearTimeout(timer); res.off('close', close) }
       return true
     }

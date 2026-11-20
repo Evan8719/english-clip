@@ -1,9 +1,10 @@
 import type { Entry } from '../types'
-import {
-  listAllEntriesIncludingDeleted,
-  upsertEntries,
-} from '../db/entries'
+import { mergeRemoteEntries } from '../db/entries'
 import { getDb } from '../db/database'
+import { readSession, storeSession, type SyncUser } from './session'
+
+export { getStoredUserId } from './session'
+export type { SyncUser } from './session'
 
 /**
  * 云同步（自建后端版）
@@ -13,46 +14,13 @@ import { getDb } from '../db/database'
  * 语义：与 Supabase 版保持一致——本地优先，按 updatedAt 取新，双向合并。
  */
 
-export interface SyncUser {
-  id: string
-  email: string | null
-}
-
 const RAW_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 const API_BASE = RAW_BASE.replace(/\/$/, '')
-const TOKEN_KEY = 'english-clip.api.token'
-const USER_KEY = 'english-clip.api.user'
 
 let syncTimer: number | null = null
-let cachedUser: SyncUser | null = readStoredUser()
-
-function readStoredUser(): SyncUser | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY)
-    return raw ? (JSON.parse(raw) as SyncUser) : null
-  } catch {
-    return null
-  }
-}
-
-function storeSession(token: string | null, user: SyncUser | null) {
-  cachedUser = user
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token)
-    else localStorage.removeItem(TOKEN_KEY)
-    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
-    else localStorage.removeItem(USER_KEY)
-  } catch {
-    /* 隐私模式下忽略 */
-  }
-}
 
 function getToken(): string {
-  try {
-    return localStorage.getItem(TOKEN_KEY) ?? ''
-  } catch {
-    return ''
-  }
+  return readSession().token
 }
 
 export function authorizedApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -95,25 +63,23 @@ export function isSyncConfigured(): boolean {
 export function isLoggedIn(): boolean {
   return Boolean(getToken())
 }
-export function getStoredUserId(): string { return getToken() ? readStoredUser()?.id || '' : '' }
-
 export async function getCurrentUser(): Promise<SyncUser | null> {
-  if (!getToken()) {
-    storeSession(null, null)
-    return null
-  }
+  const { token, user: cachedUser } = readSession()
+  if (!token) return null
   try {
-    const { status, data } = await call('/api/auth/me')
-    if (status !== 200) {
+    const { status, data } = await call('/api/auth/me', { token })
+    if (getToken() !== token) return readSession().user
+    if (status === 401) {
       storeSession(null, null)
       return null
     }
+    if (status !== 200) return cachedUser
     const user = data.user as SyncUser
-    storeSession(getToken(), user)
+    storeSession(token, user)
     return user
   } catch {
     // 离线时保留本地会话，不打断使用
-    return cachedUser
+    return readSession().user
   }
 }
 
@@ -151,68 +117,69 @@ export async function signUpWithEmail(
 }
 
 export async function signOut(): Promise<void> {
-  if (getToken()) {
+  const token = getToken()
+  storeSession(null, null)
+  if (token) {
     try {
-      await call('/api/auth/logout', { method: 'POST' })
+      await call('/api/auth/logout', { method: 'POST', token })
     } catch {
       /* 离线也允许本地退出 */
     }
   }
-  storeSession(null, null)
-}
-
-function mergeByUpdatedAt(local: Entry[], remote: Entry[]): Entry[] {
-  const map = new Map<string, Entry>()
-  for (const entry of [...remote, ...local]) {
-    const prev = map.get(entry.id)
-    if (!prev || entry.updatedAt > prev.updatedAt) {
-      map.set(entry.id, entry)
-    }
-  }
-  return [...map.values()]
 }
 
 export async function syncNow(): Promise<{ ok: boolean; message: string }> {
-  if (!getToken()) {
+  const { token, user } = readSession()
+  if (!token || !user?.id) {
     return { ok: false, message: '未登录' }
   }
+  const notebook = `account:${user.id}`
+  const sessionMatches = () => {
+    const current = readSession()
+    return current.token === token && current.user?.id === user.id
+  }
+  const sessionChanged = { ok: false, message: '登录状态已改变，请重新同步' }
 
   try {
-    const pulled = await call('/api/entries')
+    const pulled = await call('/api/entries', { token })
+    if (!sessionMatches()) return sessionChanged
     if (pulled.status !== 200) {
       return { ok: false, message: String(pulled.data.message || '同步失败') }
     }
     const remote = ((pulled.data.entries as Entry[]) ?? []).filter(Boolean)
-    const local = await listAllEntriesIncludingDeleted()
-    const merged = mergeByUpdatedAt(local, remote)
-    await upsertEntries(merged)
+    const pending = await mergeRemoteEntries(notebook, remote)
+    if (!sessionMatches()) return sessionChanged
+    window.dispatchEvent(new Event('english-clip:entries-synced'))
 
-    const pushed = await call('/api/entries', {
-      method: 'POST',
-      body: { entries: merged },
-    })
-    if (pushed.status !== 200) {
-      return { ok: false, message: String(pushed.data.message || '上传失败') }
+    if (pending.length) {
+      const pushed = await call('/api/entries', {
+        method: 'POST', token, body: { entries: pending },
+      })
+      if (!sessionMatches()) return sessionChanged
+      if (pushed.status !== 200) return { ok: false, message: String(pushed.data.message || '上传失败') }
     }
 
     const db = await getDb()
-    await db.put('meta', { key: 'lastSyncAt', value: new Date().toISOString() })
-    return { ok: true, message: `已同步 ${merged.length} 条` }
+    await db.put('meta', { key: `lastSyncAt:${notebook}`, value: new Date().toISOString() })
+    return { ok: true, message: '本子已同步' }
   } catch (error) {
     return { ok: false, message: (error as Error).message || '网络不通，稍后再试' }
   }
 }
 
 export function scheduleSilentSync(): void {
-  if (!getToken()) return
   if (syncTimer != null) window.clearTimeout(syncTimer)
+  const token = getToken()
+  if (!token) return
   syncTimer = window.setTimeout(() => {
-    void syncNow()
+    if (getToken() === token) void syncNow()
   }, 1200)
 }
 
 export async function getLastSyncAt(): Promise<string | null> {
+  const user = readSession().user
+  if (!user) return null
   const db = await getDb()
-  const row = await db.get('meta', 'lastSyncAt')
+  const row = await db.get('meta', `lastSyncAt:account:${user.id}`)
   return (row?.value as string) ?? null
 }

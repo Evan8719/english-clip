@@ -1,4 +1,5 @@
-import { mergeLearning } from './learningProgress'
+import { mergeLearning, mergeLearningItems } from './learningProgress'
+import { getStoredUserId } from './session'
 import { authorizedApiFetch } from './sync'
 import type { BookChapter } from './books'
 export interface TimedWord { start: number; end: number; text: string }
@@ -15,6 +16,7 @@ export interface Exercise {
 export interface MaterialCollection { coverUrl?: string; coverFullUrl?: string; id: string; library: string; category: string; title: string; purposes: string[]; aliases?: string[]; inferred?: boolean }
 export interface MaterialOrganization { library: string; category: string; collectionId: string; collectionTitle: string; purposes: string[]; inheritedPurposes: boolean; topics: string[]; sequence: number; inferred?: boolean }
 export interface MediaItem {
+  durationSeconds?: number
   coverUrl?: string
   coverFullUrl?: string
   organization?: MaterialOrganization
@@ -62,7 +64,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export async function listMedia(): Promise<MediaItem[]> {
   const controller = new AbortController(), timer = window.setTimeout(() => controller.abort(), 12000)
-  try { return await Promise.all((await request<{ items: MediaItem[] }>('/api/media', { signal: controller.signal })).items.map(mergeLearning)) } finally { window.clearTimeout(timer) }
+  const uid = getStoredUserId()
+  try {
+    const { items } = await request<{ items: MediaItem[] }>('/api/media', { signal: controller.signal })
+    return await mergeLearningItems(items, uid)
+  } finally { window.clearTimeout(timer) }
 }
 
 export async function getMedia(id: string): Promise<MediaItem> {
@@ -140,6 +146,14 @@ export const testAiConnection = (provider: AiProvider) => aiSettingsRequest<{ re
 export const chooseAiProvider = (provider: AiProvider) => aiSettingsRequest('/api/ai/provider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider }) })
 export async function explainWithAi(text: string, context: string, source: string, signal?: AbortSignal) {
   return (await request<{ explanation: { definitionsZh: string[]; note: string; uncertain: boolean; provider: 'deepseek' | 'gemini' } }>('/api/ai/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, context, source }), signal })).explanation
+}
+
+export async function suggestScenes(text: string, context: string, existing: string[], signal?: AbortSignal) {
+  const result = await request<{ scenes: string[] }>('/api/ai/scenes', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, context, existing }), signal,
+  })
+  return result.scenes
 }
 
 export async function chatWithAi(message: string, focus: string, history: Array<{ role: 'user' | 'assistant'; content: string }>, onDelta: (delta: string) => void, signal?: AbortSignal, dailySessionId?: string): Promise<void> {

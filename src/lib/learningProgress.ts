@@ -22,11 +22,27 @@ export async function recentLearning(): Promise<LearningRecord[]> {
   return Object.values(await records(uid)).sort((a,b) => (b.position.lastStudiedAt || '').localeCompare(a.position.lastStudiedAt || '')).slice(0, 5)
 }
 export async function mergeLearning<T extends MediaItem>(item: T): Promise<T> {
-  const uid = getStoredUserId(), saved = uid ? (await records(uid))[item.id] : undefined
-  if (uid && item.lastStudiedAt && !saved?.pending && (!saved || (item.revision || 0) > saved.position.revision)) {
-    await change(uid, all => { if (!all[item.id]?.pending) all[item.id] = { id: item.id, title: item.title, kind: item.kind, position: { revision: item.revision || 0, readingPosition: item.readingPosition, playbackPosition: item.playbackPosition, lastStudiedAt: item.lastStudiedAt } } })
+  const [result] = await mergeLearningItems([item], getStoredUserId())
+  return result
+}
+
+export async function mergeLearningItems<T extends MediaItem>(items: T[], uid: string): Promise<T[]> {
+  if (!uid || !items.length) return items
+  let saved = await records(uid)
+  const needsUpdate = (item: T, previous?: LearningRecord) =>
+    Boolean(item.lastStudiedAt && !previous?.pending && (!previous || (item.revision || 0) > previous.position.revision))
+  if (items.some(item => needsUpdate(item, saved[item.id]))) {
+    await change(uid, current => {
+      for (const { id, kind, title, revision, readingPosition, playbackPosition, lastStudiedAt } of items.filter(item => needsUpdate(item, current[item.id]))) {
+        current[id] = { id, kind, title, position: { revision: revision || 0, readingPosition, playbackPosition, lastStudiedAt } }
+      }
+      saved = current
+    })
   }
-  return saved && (saved.pending || saved.position.revision >= (item.revision || 0)) ? { ...item, ...saved.position } : item
+  return items.map(item => {
+    const previous = saved[item.id]
+    return previous && (previous.pending || previous.position.revision >= (item.revision || 0)) ? { ...item, ...previous.position } : item
+  })
 }
 export async function saveLearning(item: MediaItem, position: Partial<LearningPosition>) {
   const uid = getStoredUserId()

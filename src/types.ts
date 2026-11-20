@@ -36,6 +36,8 @@ export interface Entry {
   /** A sentence I would say using this item */
   mySentence?: string
   tags: string[]
+  /** One usage scenario, distinct from media category and user tags. */
+  scene?: string
   familiarity: Familiarity
   enrichment?: Enrichment
   createdAt: string

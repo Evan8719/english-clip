@@ -104,13 +104,13 @@ export function normalizeCategory(category?: string): string {
 }
 
 /** Rewrite stored entry categories that still use legacy labels. */
-export async function migrateLegacyEntryCategories(): Promise<number> {
-  const entries = await listEntries()
+export async function migrateLegacyEntryCategories(notebook: string): Promise<number> {
+  const entries = await listEntries(notebook)
   let changed = 0
   for (const e of entries) {
     const next = normalizeCategory(e.category)
     if (next === (e.category ?? '')) continue
-    await updateEntry(e.id, { category: next })
+    await updateEntry(e.id, { category: next }, notebook)
     changed += 1
   }
   return changed

@@ -1,5 +1,5 @@
 /* English Clip — lightweight offline shell + lexicon cache */
-const VERSION = 'english-clip-v18'
+const VERSION = 'english-clip-v19'
 const SHELL = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const SHELL = [
   '/favicon.svg',
   '/pwa-192.png',
   '/pwa-512.png',
+  '/pwa-maskable.png',
   '/clip-wordcard.webp',
   '/covers/alice.webp',
   '/guide.html',

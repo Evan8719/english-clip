@@ -1,5 +1,11 @@
 # English Clip — notes for AI agents
 
+## Current local-preview workflow (2026-11-08 user override)
+
+- The user explicitly requested an actually running local app for UI and interaction review. Implement the selected existing reference designs locally; use real controls, preserve capture features, and show actual browser results against the reference.
+- Until the user confirms the version after layout review: do not commit a new version, push to GitHub, or publish/update the NAS program. Keep local backups and uncommitted work on the task branch. This overrides the ordinary completion-time commit/push rule below for this review phase.
+- Once the user explicitly approves the version, update GitHub and the NAS production release together using the normal verified release workflow. Do not package mobile installers yet.
+
 ## User preference: visual approval before UI implementation (2026-11-08)
 
 - For interface, navigation, layout, icon and interaction changes, first deliver a visual Demo or mockup for the user to review.

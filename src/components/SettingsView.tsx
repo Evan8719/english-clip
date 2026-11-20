@@ -4,7 +4,9 @@ import { NavIcon } from './NavIcon'
 import { AiSettings } from './AiSettings'
 import type { SyncUser as User } from '../lib/sync'
 import { aiKeyConfigured, deleteAiKey, saveAiKey } from '../lib/media'
-import { exportEntriesJson, exportEntriesMarkdown } from '../lib/export'
+import { exportEntriesJson, exportEntriesMarkdown, exportLegacyEntriesJson } from '../lib/export'
+import { listLegacyEntries } from '../db/entries'
+import { readSession, observeSession } from '../lib/session'
 import {
   addCategory,
   DEFAULT_CATEGORIES,
@@ -21,8 +23,8 @@ import {
   syncNow,
 } from '../lib/sync'
 
-export function SettingsView() {
-  const [user, setUser] = useState<User | null>(null)
+export function SettingsView({ entryCount }: { entryCount: number }) {
+  const [user, setUser] = useState<User | null>(() => readSession().user)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
@@ -32,6 +34,8 @@ export function SettingsView() {
   const [newCategory, setNewCategory] = useState('')
   const [aiKey, setAiKey] = useState('')
   const [aiConfigured, setAiConfigured] = useState(false)
+  const [legacyCount, setLegacyCount] = useState(0)
+  const [exportMessage, setExportMessage] = useState('')
   const configured = isSyncConfigured()
 
   async function refresh() {
@@ -44,13 +48,23 @@ export function SettingsView() {
 
   useEffect(() => {
     void refresh()
+    let active = true
+    void listLegacyEntries().then(items => { if (active) setLegacyCount(items.length) }).catch(() => undefined)
+    const stop = observeSession(() => {
+      setUser(readSession().user)
+      setEmail('')
+      setPassword('')
+      setAiKey('')
+      setAiConfigured(false)
+      setLastSync(null)
+    })
+    return () => { active = false; stop() }
   }, [])
 
   return (
     <div className="page">
       <header className="page-header">
         <h1>设置</h1>
-        <div className="settings-help-links"><a href={`${import.meta.env.BASE_URL}guide.html`} target="_blank" rel="noreferrer"><NavIcon name="book" />使用说明</a><a href={`${import.meta.env.BASE_URL}candidates.html`} target="_blank" rel="noreferrer"><NavIcon name="bookmark" />精选待选清单</a></div>
         <p className="lede">手机记、电脑看——同一邮箱登录即可互通。</p>
       </header>
 
@@ -133,7 +147,7 @@ export function SettingsView() {
                       void signUpWithEmail(email, password)
                         .then(() => syncNow())
                         .then((r) => {
-                          setMessage(r.ok ? `注册成功，已同步 ${r.message.replace('已同步 ', '')}` : `注册成功（${r.message}）`)
+                          setMessage(r.ok ? '注册成功，本子已同步' : `注册成功（${r.message}）`)
                           return refresh()
                         })
                         .catch((e: Error) => setMessage(e.message))
@@ -167,6 +181,7 @@ export function SettingsView() {
                 <button
                   type="button"
                   className="ghost"
+                  disabled={busy}
                   onClick={() => {
                     void signOut().then(refresh)
                   }}
@@ -235,8 +250,8 @@ export function SettingsView() {
       </section>
 
       <section className="panel">
-        <h2>导出</h2>
-        <p className="muted">Markdown 方便阅读；JSON 适合完整备份、以后再导入。</p>
+        <h2>导出本子</h2>
+        <p className="muted">{user ? '当前账号' : '本机访客本子'} · {entryCount} 条词句。包含释义、原句、笔记、来源、标签和场景。JSON 额外保留完整的词条数据及复习记录。媒体文件、素材字幕、练习录音和 AI 设置需另行备份。</p>
         <div className="row">
           <button
             type="button"
@@ -245,8 +260,8 @@ export function SettingsView() {
             onClick={() => {
               setBusy(true)
               void exportEntriesMarkdown()
-                .then(() => setMessage('已导出 Markdown（手机上可能弹出分享菜单）'))
-                .catch((e: Error) => setMessage(e.message || '导出失败'))
+                .then(() => setExportMessage('已导出 Markdown'))
+                .catch((e: Error) => setExportMessage(e.message || '导出失败'))
                 .finally(() => setBusy(false))
             }}
           >
@@ -259,14 +274,30 @@ export function SettingsView() {
             onClick={() => {
               setBusy(true)
               void exportEntriesJson()
-                .then(() => setMessage('已导出 JSON 备份'))
-                .catch((e: Error) => setMessage(e.message || '导出失败'))
+                .then(() => setExportMessage('已导出 JSON 备份'))
+                .catch((e: Error) => setExportMessage(e.message || '导出失败'))
                 .finally(() => setBusy(false))
             }}
           >
             导出 JSON 备份
           </button>
         </div>
+        {!user && legacyCount > 0 && <div>
+          <p className="muted">这台设备保留了 {legacyCount} 条旧版记录。可下载原始备份，确认归属后再恢复需要的内容。</p>
+          <button type="button" className="chip" disabled={busy} onClick={() => {
+            setBusy(true)
+            void exportLegacyEntriesJson()
+              .then(() => setExportMessage('已导出旧版本机记录'))
+              .catch((error: Error) => setExportMessage(error.message || '导出失败'))
+              .finally(() => setBusy(false))
+          }}>导出旧版本机记录</button>
+        </div>}
+        {exportMessage && <p role="status">{exportMessage}</p>}
+      </section>
+      <section className="panel settings-help-links">
+        <h2>帮助与素材</h2>
+        <a href={`${import.meta.env.BASE_URL}guide.html`} target="_blank" rel="noreferrer"><NavIcon name="book" /><span><strong>使用说明</strong><small>记录、复习、素材和同步</small></span><NavIcon name="next" /></a>
+        <a href={`${import.meta.env.BASE_URL}candidates.html`} target="_blank" rel="noreferrer"><NavIcon name="collect" /><span><strong>精选待选清单</strong><small>视频选题与补充流程</small></span><NavIcon name="next" /></a>
       </section>
     </div>
   )

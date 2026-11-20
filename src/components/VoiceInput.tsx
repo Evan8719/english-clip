@@ -8,7 +8,7 @@ interface Recognition {
   start(): void; stop(): void; abort(): void
 }
 type SpeechWindow = Window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }
-export function VoiceInput({ onText, active = true, disabled = false, label = '点这里，开口说' }: { onText: (text: string) => void; active?: boolean; disabled?: boolean; label?: string }) {
+export function VoiceInput({ onText, active = true, disabled = false, label = '点这里，开口说', variant = 'default' }: { onText: (text: string) => void; active?: boolean; disabled?: boolean; label?: string; variant?: 'default' | 'orb' | 'icon' }) {
   const [listening, setListening] = useState(false), [message, setMessage] = useState('')
   const recognition = useRef<Recognition | null>(null)
   useEffect(() => () => { if (recognition.current) { recognition.current.onresult = null; recognition.current.onend = null; recognition.current.abort() } }, [])
@@ -25,5 +25,5 @@ export function VoiceInput({ onText, active = true, disabled = false, label = '�
     next.onend = () => setListening(false)
     try { next.start(); setListening(true); setMessage('正在听，请说英语…') } catch { setMessage('语音识别无法启动，请重试。') }
   }
-  return <div className="voice-input"><button type="button" className="redesign-secondary" disabled={disabled} onClick={start}><NavIcon name="mic" />{listening ? '正在听 · 结束说话' : label}</button><span className="muted tiny" role="status">{message}</span></div>
+  return <div className={`voice-input voice-input-${variant}`}><button type="button" className="redesign-secondary" disabled={disabled} aria-label={listening ? '结束说话' : label} aria-pressed={listening} onClick={start}><NavIcon name="mic" /><span className="voice-input-label">{listening ? '正在听 · 结束说话' : label}</span></button><span className="muted tiny" role="status">{message}</span></div>
 }

@@ -1,3 +1,5 @@
+import { NavIcon } from './NavIcon'
+import { SourceVisual } from './SourceVisual'
 import { parseTags } from '../lib/tags'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Enrichment, Entry, EntryKind } from '../types'
@@ -31,6 +33,7 @@ export interface EntryFormInput {
 }
 
 interface Props {
+  originMaterialId?: string
   open: boolean
   entry?: Entry | null
   initialText?: string
@@ -45,6 +48,7 @@ interface Props {
 
 export function CaptureModal({
   open,
+  originMaterialId,
   entry = null,
   initialText = '',
   initialContext = '',
@@ -62,6 +66,8 @@ export function CaptureModal({
     resize(); view?.addEventListener('resize', resize); view?.addEventListener('scroll', resize)
     return () => { view?.removeEventListener('resize', resize); view?.removeEventListener('scroll', resize) }
   }, [open])
+  const modalRef = useRef<HTMLDialogElement>(null)
+  const startingCategory = useRef('其他')
   const editing = Boolean(entry)
   const [text, setText] = useState(initialText)
   const [context, setContext] = useState('')
@@ -78,6 +84,7 @@ export function CaptureModal({
   const [categories, setCategories] = useState<string[]>([])
   const [category, setCategory] = useState('其他')
   const [newCategory, setNewCategory] = useState('')
+  const [sourceOpen, setSourceOpen] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const [showCustomCat, setShowCustomCat] = useState(false)
   const [aiEnabled, setAiEnabled] = useState(() => localStorage.getItem('ec.capture-ai') !== 'off')
@@ -96,8 +103,10 @@ export function CaptureModal({
 
   useEffect(() => {
     if (!open) return
+    let active = true
     void listCategories().then(setCategories)
     setNewCategory(''); setTagText((entry?.tags || []).join('，'))
+    setSourceOpen(false)
     setShowCustomCat(false)
     setAiRevision(0); setAiSignature(''); setManualGloss(false); setEditGloss(false); setAiError(''); setSaveError(''); activeText.current = entry?.text.trim() || initialText.trim(); initializingText.current = activeText.current
 
@@ -110,7 +119,8 @@ export function CaptureModal({
       setMySentence(entry.mySentence ?? '')
       setKind(entry.kind)
       setEnrichment(entry.enrichment)
-      setCategory(normalizeCategory(entry.category))
+      startingCategory.current = normalizeCategory(entry.category)
+      setCategory(startingCategory.current)
       setShowMore(
         Boolean(entry.context || entry.note || entry.mySentence),
       )
@@ -126,8 +136,15 @@ export function CaptureModal({
     setKind(detectKind(initialText || 'word'))
     setEnrichment(undefined)
     setShowMore(Boolean(initialContext))
-    if (initialCategory) setCategory(normalizeCategory(initialCategory))
-    else void getLastCategory().then((c) => setCategory(normalizeCategory(c)))
+    startingCategory.current = normalizeCategory(initialCategory)
+    setCategory(startingCategory.current)
+    if (!initialCategory) void getLastCategory().then(value => {
+      if (!active) return
+      const next = normalizeCategory(value)
+      setCategory(current => current === '其他' ? next : current)
+      startingCategory.current = next
+    }).catch(() => undefined)
+    return () => { active = false }
   }, [open, entry, initialText, initialContext, initialCategory, initialSource, initialSourceDetail])
 
   useEffect(() => {
@@ -166,7 +183,27 @@ export function CaptureModal({
     return () => { cancelled = true; window.clearTimeout(timer); controller.abort() }
   }, [open, aiReady, aiEnabled, text, context, source, manualGloss, editing, aiRevision])
 
+  useEffect(() => {
+    const dialog = modalRef.current
+    if (!open || !dialog) return
+    dialog.showModal()
+    if (!editing) dialog.querySelector('input')?.focus({ preventScroll: true })
+    return () => dialog.close()
+  }, [open, editing])
   if (!open) return null
+
+  function requestClose() {
+    if (saving) return
+    const dirty = text !== (entry?.text ?? initialText) ||
+      context !== (entry?.context ?? initialContext) ||
+      source !== (entry?.source ?? initialSource) ||
+      sourceDetail !== (entry?.sourceDetail ?? initialSourceDetail) ||
+      note !== (entry?.note ?? '') || mySentence !== (entry?.mySentence ?? '') ||
+      tagText !== (entry?.tags || []).join('，') || category !== startingCategory.current ||
+      kind !== (entry?.kind || detectKind(initialText || 'word')) ||
+      (manualGloss && enrichment !== entry?.enrichment)
+    if (!dirty || window.confirm('这条记录还有未保存的内容。确定放弃并关闭吗？')) onClose()
+  }
 
   async function handleSave() {
     if (!text.trim() || saving) return
@@ -193,47 +230,74 @@ export function CaptureModal({
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <dialog ref={modalRef} className="modal-backdrop capture-dialog" aria-label={editing ? '编辑表达' : '记录新表达'}
+      onCancel={event => { event.preventDefault(); requestClose() }}
+      onClick={event => { if (event.target === event.currentTarget) requestClose() }}>
       <div
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={editing ? '编辑' : '记录'}
-        onClick={(e) => e.stopPropagation()}
+        className="modal fidelity-capture"
       >
-        <header className="modal-header">
-          <h2>{editing ? '编辑卡片' : '记录'}</h2>
-          <button type="button" className="ghost" onClick={onClose}>
-            关闭
-          </button>
-        </header>
-
-        <VoiceInput onText={(value) => setText((old) => old ? old + ' ' + value : value)} />
-        <label className="field">
-          <span>词 / 短语 / 句子</span>
-          <div className="row">
-            <input
-              autoFocus={!editing}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="例如：look forward to"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  void handleSave()
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="chip"
-              disabled={!text.trim()}
-              onClick={() => void speakEnglish(text, enrichment?.audioUrl)}
-            >
-              听发音
-            </button>
+        <header className="modal-header capture-header"><button className="fidelity-icon" aria-label="关闭记录面板" onClick={requestClose} disabled={saving}><NavIcon name="close" /></button><h2>{editing ? '编辑表达' : '记录新表达'}</h2><button className="capture-save-text" disabled={!text.trim() || saving} onClick={() => void handleSave()}>{saving ? '保存中…' : '保存'}</button></header>
+        <div className="capture-scroll"><label className="capture-expression"><span className="sr-only">英文表达</span><input aria-label="英文表达" value={text} onChange={event => setText(event.target.value)} placeholder="想记下的英文表达" onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) void handleSave() }} /></label><div className="capture-expression-voice"><VoiceInput variant="icon" label="语音输入表达" onText={value => setText(old => old ? old + ' ' + value : value)} /></div>
+        <label className="field capture-context"><span className="sr-only">原句或语境（可选）</span><textarea aria-label="原句或语境（可选）" rows={2} value={context} onChange={event => setContext(event.target.value)} placeholder="原句或语境（可选）" /></label>
+        <section className="enrich-box">
+          <div className="enrich-title">
+            <span>{enrichment?.provider?.startsWith('ai-') ? 'AI · 结合原句' : '词典参考'}</span>
+            {aiBusy ? <span className="muted">AI 释义中…</span> : enriching && <span className="muted">查找中…</span>}
           </div>
-        </label>
+          <div className="capture-ai-tools"><label><input type="checkbox" checked={aiEnabled} onChange={event => { setAiEnabled(event.target.checked); localStorage.setItem('ec.capture-ai', event.target.checked ? 'on' : 'off') }} />AI 释义</label><button type="button" className="redesign-text-button" disabled={!text.trim() || !aiReady || aiBusy} onClick={() => { setManualGloss(false); setAiEnabled(true); setAiRevision(value => value + 1) }}>按原句重释</button><button type="button" className="redesign-text-button" onClick={() => { setEditGloss(value => !value); setManualGloss(true) }}>修改释义</button></div>
+          {aiEnabled && !aiReady && <p className="muted tiny">在设置中配置 AI 后，可自动按原句释义。</p>}
+          {aiError && <p className="muted tiny" role="status">{aiError}；可先保存，再重试。</p>}
+          {editGloss && <textarea aria-label="修改中文释义" rows={3} value={enrichment?.definitionsZh?.join('\n') || ''} onChange={event => { setManualGloss(true); const definitionsZh = event.target.value.split('\n'); setEnrichment(current => ({ ...current, definitions: [], examples: [], definitionsZh, provider: 'manual', aiPending: false, aiNote: undefined, aiUncertain: false })) }} />}
+          {enrichment ? (
+            <div className="enrich-body">
+              {kind === 'word' && enrichment.phonetic && <p className="phonetic">{enrichment.phonetic}</p>}
+              <p className="meta-line">
+                {enrichment.frequencyBand
+                  ? `频率：${frequencyLabel(enrichment.frequencyBand)}`
+                  : null}
+                {enrichment.cefrBand ? ` · CEFR ${enrichment.cefrBand}` : null}
+                {enrichment.pos ? ` · ${enrichment.pos}` : null}
+              </p>
+              {enrichment.definitionsZh?.length ? (
+                <p className="zh-def">{enrichment.definitionsZh.join('；')}</p>
+              ) : null}
+              {enrichment.aiNote && <p className="muted tiny">{enrichment.aiUncertain ? '待确认：' : ''}{enrichment.aiNote}</p>}
+              {enrichment.definitions.slice(0, 2).map((d) => (
+                <p key={d} className="def">
+                  {d}
+                </p>
+              ))}
+              {enrichment.examples.slice(0, 1).map((ex) => (
+                <p key={ex} className="example">
+                  e.g. {ex}
+                </p>
+              ))}
+              {editing && (
+                <button
+                  type="button"
+                  className="chip"
+                  style={{ marginTop: '0.5rem' }}
+                  onClick={() => {
+                    setEnriching(true)
+                    void enrichText(text.trim())
+                      .then((result) => {
+                        if (result) setEnrichment(result)
+                      })
+                      .finally(() => setEnriching(false))
+                  }}
+                >
+                  重新补全
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="muted tiny">输入后自动补全；未命中可联网查一次。</p>
+          )}
+        </section>
 
+
+        <button className="capture-source-summary" aria-expanded={sourceOpen} onClick={() => setSourceOpen(value => !value)}><SourceVisual source={source} category={category} materialId={entry?.enrichment?.origin?.materialId || originMaterialId} /><span><strong>{source || '选择出处'}</strong><span className="capture-tag-summary">{[category, ...parseTags(tagText)].map(tag => <span className="entry-source-tag" key={tag}>{tag}</span>)}</span></span><NavIcon name="plus" /></button>
+        {sourceOpen && <div className="capture-source-editor">
         <div className="kind-row tight">
           {(['word', 'phrase', 'sentence'] as EntryKind[]).map((k) => (
             <button
@@ -327,26 +391,10 @@ export function CaptureModal({
           <div className="entry-tag-list">{[...new Set(entries.flatMap(item => item.tags || []))].filter(tag => !parseTags(tagText).includes(tag)).slice(0, 12).map(tag => <button type="button" className="chip" key={tag} onClick={() => setTagText([...parseTags(tagText), tag].join('，'))}>+ {tag}</button>)}</div>
         </section>
 
-        <button
-          type="button"
-          className="more-toggle"
-          aria-expanded={showMore}
-          onClick={() => setShowMore((v) => !v)}
-        >
-          {showMore ? '收起更多 ▲' : '语境 / 理解 / 造句 ▼'}
-        </button>
-
+        </div>}
+        <div className="capture-extra-actions"><button onClick={() => setShowMore(value => !value)} aria-expanded={showMore}><NavIcon name="note" />添加笔记</button><button onClick={() => setShowMore(true)}><NavIcon name="edit" />写自己的例句</button><button className="fidelity-icon" aria-label="朗读当前表达" disabled={!text.trim()} onClick={() => void speakEnglish(text, enrichment?.audioUrl)}><NavIcon name="audio" /></button></div>
         {showMore && (
           <div className="more-block">
-            <label className="field compact">
-              <span>原句语境</span>
-              <textarea
-                rows={2}
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                placeholder="看到的那句原文"
-              />
-            </label>
             <label className="field compact">
               <span>我的理解</span>
               <textarea
@@ -368,72 +416,16 @@ export function CaptureModal({
           </div>
         )}
 
-        <section className="enrich-box">
-          <div className="enrich-title">
-            <span>{enrichment?.provider?.startsWith('ai-') ? 'AI · 结合原句' : '词典参考'}</span>
-            {aiBusy ? <span className="muted">AI 释义中…</span> : enriching && <span className="muted">查找中…</span>}
-          </div>
-          <div className="capture-ai-tools"><label><input type="checkbox" checked={aiEnabled} onChange={event => { setAiEnabled(event.target.checked); localStorage.setItem('ec.capture-ai', event.target.checked ? 'on' : 'off') }} />AI 释义</label><button type="button" className="redesign-text-button" disabled={!text.trim() || !aiReady || aiBusy} onClick={() => { setManualGloss(false); setAiEnabled(true); setAiRevision(value => value + 1) }}>按原句重释</button><button type="button" className="redesign-text-button" onClick={() => { setEditGloss(value => !value); setManualGloss(true) }}>修改释义</button></div>
-          {aiEnabled && !aiReady && <p className="muted tiny">在设置中配置 AI 后，可自动按原句释义。</p>}
-          {aiError && <p className="muted tiny" role="status">{aiError}；可先保存，再重试。</p>}
-          {editGloss && <textarea aria-label="修改中文释义" rows={3} value={enrichment?.definitionsZh?.join('\n') || ''} onChange={event => { setManualGloss(true); const definitionsZh = event.target.value.split('\n'); setEnrichment(current => ({ ...current, definitions: [], examples: [], definitionsZh, provider: 'manual', aiPending: false, aiNote: undefined, aiUncertain: false })) }} />}
-          {enrichment ? (
-            <div className="enrich-body">
-              {enrichment.phonetic && <p className="phonetic">{enrichment.phonetic}</p>}
-              <p className="meta-line">
-                {enrichment.frequencyBand
-                  ? `频率：${frequencyLabel(enrichment.frequencyBand)}`
-                  : null}
-                {enrichment.cefrBand ? ` · CEFR ${enrichment.cefrBand}` : null}
-                {enrichment.pos ? ` · ${enrichment.pos}` : null}
-              </p>
-              {enrichment.definitionsZh?.length ? (
-                <p className="zh-def">{enrichment.definitionsZh.join('；')}</p>
-              ) : null}
-              {enrichment.aiNote && <p className="muted tiny">{enrichment.aiUncertain ? '待确认：' : ''}{enrichment.aiNote}</p>}
-              {enrichment.definitions.slice(0, 2).map((d) => (
-                <p key={d} className="def">
-                  {d}
-                </p>
-              ))}
-              {enrichment.examples.slice(0, 1).map((ex) => (
-                <p key={ex} className="example">
-                  e.g. {ex}
-                </p>
-              ))}
-              {editing && (
-                <button
-                  type="button"
-                  className="chip"
-                  style={{ marginTop: '0.5rem' }}
-                  onClick={() => {
-                    setEnriching(true)
-                    void enrichText(text.trim())
-                      .then((result) => {
-                        if (result) setEnrichment(result)
-                      })
-                      .finally(() => setEnriching(false))
-                  }}
-                >
-                  重新补全
-                </button>
-              )}
-            </div>
-          ) : (
-            <p className="muted tiny">输入后自动补全；未命中可联网查一次。</p>
-          )}
-        </section>
-
-        {saveError && <p role="alert">{saveError}</p>}
-        <button
+        {saveError && <p role="alert">{saveError}</p>}</div>
+        <footer className="capture-footer"><button
           type="button"
           className="primary wide"
           disabled={!text.trim() || saving}
           onClick={() => void handleSave()}
         >
-          {saving ? '保存中…' : editing ? '保存修改' : '保存'}
-        </button>
+          {saving ? '保存中…' : editing ? '保存修改' : '记下来'}
+        </button></footer>
       </div>
-    </div>
+    </dialog>
   )
 }

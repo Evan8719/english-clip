@@ -12,9 +12,10 @@ interface Props {
   onUpdated: () => void
   onReview: (entry: Entry, familiarity: Familiarity) => Promise<void>
   onHome: () => void
+  onMethods: () => void
 }
 
-export function ReviewView({ entries, onEdit, onUpdated, onReview, onHome }: Props) {
+export function ReviewView({ entries, onEdit, onUpdated, onReview, onHome, onMethods }: Props) {
   const [mode, setMode] = useState<'flip' | 'game'>('flip')
   const [queue, setQueue] = useState(() => getStaleEntries(entries, entries.length).map((entry) => entry.id))
   const [index, setIndex] = useState(0)
@@ -49,8 +50,9 @@ export function ReviewView({ entries, onEdit, onUpdated, onReview, onHome }: Pro
   }
 
   return <div className="page review-page">
-    <header className="page-header">
+    <header className="page-header review-heading">
       <h1>复习</h1>
+      <button type="button" className="review-method-entry" onClick={onMethods}><NavIcon name="methods" /><span>学习方法</span></button>
       <p className="lede">{mode === 'game' ? '从自己的记录里练几题，随时继续。' : '点按翻面，左右滑动切词。熟悉程度由你来选。'}</p>
     </header>
     <nav className="review-mode-tabs" aria-label="复习模式"><button aria-pressed={mode === 'flip'} onClick={() => setMode('flip')}>自由翻卡</button><button aria-pressed={mode === 'game'} onClick={() => setMode('game')}>闯关练习</button></nav>
