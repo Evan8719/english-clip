@@ -27,7 +27,7 @@ node --check nas/server.mjs
 node --check nas/import.mjs
 ```
 
-- `npm run build` 会触发 `prebuild` 重新生成图标和词库；仅在明确需要更新这些资源时使用。
+- `npm run build` 会触发 `prebuild` 校验应用图标并重新生成词库；普通网页发布使用 `npm run build:web`。
 - 前端改动在本地浏览器检查受影响流程，包括手机布局；记录、编辑、筛选等操作只用测试数据。
 - 同步或后端改动使用独立的 `EC_DATA_DIR`、`EC_WEB_DIR` 和空闲端口，禁止指向正式数据目录。
 - `scripts/smoke-test.mjs` 是原有 macOS Chrome 脚本；未在当前系统实际运行就不能记为通过。
